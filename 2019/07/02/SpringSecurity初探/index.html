@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="SpringSecurity，为什么？在权限管理框架中，有两座大山，Shiro和SpringSecurity,后者具有天然具有Spring家族的支撑，提供了一系列完整的功能，Shiro作为一个简单的框架，也可以满足大多数场景下的需求。之前简单使用过Shiro，知道它是通过一些列的Filter来做认证的鉴权。这次打算看一下SpringSecurity的使用，听过这个框架比较复杂，在网上看的一些文字教">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SpringSecurity初探">
+<meta property="og:url" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="SpringSecurity，为什么？在权限管理框架中，有两座大山，Shiro和SpringSecurity,后者具有天然具有Spring家族的支撑，提供了一系列完整的功能，Shiro作为一个简单的框架，也可以满足大多数场景下的需求。之前简单使用过Shiro，知道它是通过一些列的Filter来做认证的鉴权。这次打算看一下SpringSecurity的使用，听过这个框架比较复杂，在网上看的一些文字教">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/Spring-Security%E8%AE%A4%E8%AF%81Filter.jpg">
+<meta property="og:image" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/springboot%20mvc%20%E5%90%AF%E5%8A%A86%E5%A4%A7Filter.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/Spring-Security%20FilterProxy.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/FilterChainProxy%E6%B5%81%E7%A8%8B.png">
+<meta property="article:published_time" content="2019-07-02T21:56:33.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:17.989Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="认证，授权，SpringSecurity">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/Spring-Security%E8%AE%A4%E8%AF%81Filter.jpg">
+
+<link rel="canonical" href="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>SpringSecurity初探 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SpringSecurity初探
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-07-02 21:56:33" itemprop="dateCreated datePublished" datetime="2019-07-02T21:56:33+00:00">2019-07-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:17" itemprop="dateModified" datetime="2021-07-15T16:43:17+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Spring/" itemprop="url" rel="index"><span itemprop="name">Spring</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="SpringSecurity，为什么？"><a href="#SpringSecurity，为什么？" class="headerlink" title="SpringSecurity，为什么？"></a>SpringSecurity，为什么？</h2><p>在权限管理框架中，有两座大山，Shiro和SpringSecurity,后者具有天然具有Spring家族的支撑，提供了一系列完整的功能，Shiro作为一个简单的框架，也可以满足大多数场景下的需求。之前简单使用过Shiro，知道它是通过一些列的Filter来做认证的鉴权。这次打算看一下SpringSecurity的使用，听过这个框架比较复杂，在网上看的一些文字教程也比较晕，还是自己来探究一下才能有更好的理解<br><a id="more"></a></p>
+<h2 id="Spring-Security介绍"><a href="#Spring-Security介绍" class="headerlink" title="Spring Security介绍"></a>Spring Security介绍</h2><ul>
+<li>开源</li>
+<li>提供企业级的安全认证和授权</li>
+</ul>
+<p>Spring安全拦截器</p>
+<ul>
+<li><p>认证管理器</p>
+<ul>
+<li><p>认证模式</p>
+<ul>
+<li><p>Basic </p>
+<p>HTTP 1.0中使用的认证方法，使用用户名和密码Base64编码的方式</p>
+<p>浏览器弹出对话框，用户输入用户名和密码，加入头部</p>
+<p>无状态</p>
+<p>安全性不足</p>
+</li>
+<li><p>Digest</p>
+<p>解决安全性问题</p>
+<p>浏览器对用户名和密码请求方法，URL等进行MD5运算，发送到服务器</p>
+<p>服务器获取到用户名密码，请求方法，URL等MD5运算，查看是否相等</p>
+<p>安全性问题依然存在</p>
+</li>
+<li><p>X.509</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>访问决策管理器</p>
+</li>
+<li><p>运行身份管理器</p>
+</li>
+</ul>
+<h3 id="常用权限拦截器"><a href="#常用权限拦截器" class="headerlink" title="常用权限拦截器"></a>常用权限拦截器</h3><p>Spring-Security拦截器链流程图</p>
+<p><img src="/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/Spring-Security认证Filter.jpg" alt=""></p>
+<p>介绍几个常用的Filter</p>
+<ol>
+<li><p>SecurityContextPersistenceFilter</p>
+<p>基于ThreadLocal</p>
+</li>
+<li><p>LogoutFilter</p>
+<p>发送注销请求时，清空用户的session,cookie，重定向</p>
+</li>
+<li><p>AbstractAuthenticationProcessingFilter</p>
+<p>用户登录的请求</p>
+</li>
+<li><p>DefaultLoginPageGeneratingFilter</p>
+<p>生成登录页面</p>
+</li>
+<li><p>BasicAuthencationFilter</p>
+</li>
+<li><p>SecurityContextHolderAwareRequestFilter</p>
+<p>包装，提供额外的数据</p>
+</li>
+<li><p>RememberMeAuthemticationFilter</p>
+<p>提供RememberMe功能，当cookie中存在rememberme时，登录成功后生成唯一cookie</p>
+</li>
+<li><p>ExceptionTranlationFilter</p>
+<p>请求到对应的页面，响应异常</p>
+<p>ExceptionTranslationFilter异常处理过滤器,该过滤器用来处理在系统认证授权过程中抛出的异常（也就是下一个过滤器<code>FilterSecurityInterceptor</code>）,主要是 处理  <code>AuthenticationException</code> 和<code>AccessDeniedException</code></p>
+</li>
+<li><p>SessionManagerFilter</p>
+</li>
+<li><p>FilterSecurityInterceptor（授权）</p>
+<p>用户没有登录，抛出未登录异常</p>
+<p>用户登录，但是没有权限访问该资源，抛出拒绝访问的异常</p>
+<p>用户登录，有权限，则放行</p>
+</li>
+</ol>
+<pre><code>此过滤器为认证授权过滤器链中最后一个过滤器，该过滤器之后就是请求真正的 服务
+</code></pre><h3 id="Filter如何执行"><a href="#Filter如何执行" class="headerlink" title="Filter如何执行"></a>Filter如何执行</h3><blockquote>
+<p>FilterChainProxy会按照顺序调用一组Filter，完成授权验证</p>
+</blockquote>
+<p>请求首先经过Servlet Filter链，这里面包含6个Filter</p>
+<p><img src="/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/springboot mvc 启动6大Filter.png" alt=""></p>
+<p>可以看到如下的一个Filter</p>
+<p><code>ApplicationFilterConfig[name=springSecurityFilterChain, filterClass=org.springframework.boot.web.servlet.DelegatingFilterProxyRegistrationBean$1]</code></p>
+<p>这个就是Spring Security Filter的入口，它的类型是<code>DelegationFilterProxy</code></p>
+<p>那么，这个DelegationFilterProxy到底执行了什么样的操作呢？可以简单看一下源码</p>
+<p>重点看一下部分的源码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DelegatingFilterProxy</span> <span class="keyword">extends</span> <span class="title">GenericFilterBean</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 类中的属性</span></span><br><span class="line">    <span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> String contextAttribute;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> WebApplicationContext webApplicationContext;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> String targetBeanName;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">boolean</span> targetFilterLifecycle = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 重点在于这个属性</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">volatile</span> Filter delegate;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">final</span> Object delegateMonitor = <span class="keyword">new</span> Object();</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(ServletRequest request, ServletResponse response, FilterChain filterChain)</span></span></span><br><span class="line"><span class="function">			<span class="keyword">throws</span> ServletException, IOException </span>&#123;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Lazily initialize the delegate if necessary.</span></span><br><span class="line">		Filter delegateToUse = <span class="keyword">this</span>.delegate;</span><br><span class="line">		<span class="keyword">if</span> (delegateToUse == <span class="keyword">null</span>) &#123;</span><br><span class="line">			<span class="keyword">synchronized</span> (<span class="keyword">this</span>.delegateMonitor) &#123;</span><br><span class="line">				delegateToUse = <span class="keyword">this</span>.delegate;</span><br><span class="line">				<span class="keyword">if</span> (delegateToUse == <span class="keyword">null</span>) &#123;</span><br><span class="line">					WebApplicationContext wac = findWebApplicationContext();</span><br><span class="line">					<span class="keyword">if</span> (wac == <span class="keyword">null</span>) &#123;</span><br><span class="line">						<span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"No WebApplicationContext found: "</span> +</span><br><span class="line">								<span class="string">"no ContextLoaderListener or DispatcherServlet registered?"</span>);</span><br><span class="line">					&#125;</span><br><span class="line">					delegateToUse = initDelegate(wac);</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="keyword">this</span>.delegate = delegateToUse;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Let the delegate perform the actual doFilter operation.</span></span><br><span class="line">		invokeDelegate(delegateToUse, request, response, filterChain);</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">// .......</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * Initialize the Filter delegate, defined as bean the given Spring</span></span><br><span class="line"><span class="comment">	 * application context.</span></span><br><span class="line"><span class="comment">	 * &lt;p&gt;The default implementation fetches the bean from the application context</span></span><br><span class="line"><span class="comment">	 * and calls the standard &#123;<span class="doctag">@code</span> Filter.init&#125; method on it, passing</span></span><br><span class="line"><span class="comment">	 * in the FilterConfig of this Filter proxy.</span></span><br><span class="line"><span class="comment">	 </span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> wac the root application context</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@return</span> the initialized delegate Filter</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@throws</span> ServletException if thrown by the Filter</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">protected</span> Filter <span class="title">initDelegate</span><span class="params">(WebApplicationContext wac)</span> <span class="keyword">throws</span> ServletException 	</span>&#123;</span><br><span class="line">		String targetBeanName = getTargetBeanName();</span><br><span class="line">		Assert.state(targetBeanName != <span class="keyword">null</span>, <span class="string">"No target bean name set"</span>);</span><br><span class="line">		Filter delegate = wac.getBean(targetBeanName, Filter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">		<span class="keyword">if</span> (isTargetFilterLifecycle()) &#123;</span><br><span class="line">			delegate.init(getFilterConfig());</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> delegate;</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 调用delegate的doFilter方法</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">invokeDelegate</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">			Filter delegate, ServletRequest request, ServletResponse response, FilterChain filterChain)</span></span></span><br><span class="line"><span class="function">			<span class="keyword">throws</span> ServletException, IOException </span>&#123;</span><br><span class="line"></span><br><span class="line">		delegate.doFilter(request, response, filterChain);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>根据以上代码的注释我们可以看出大概的执行流程</p>
+<p>那类中的Filter delegate是什么呢？断点调式运行可以找到以下东西</p>
+<p><img src="/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/Spring-Security FilterProxy.png" alt=""></p>
+<p>这是Spring Security 提供的一个FilterChainProxy,关注其中的关键源码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FilterChainProxy</span> <span class="keyword">extends</span> <span class="title">GenericFilterBean</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 包含一组SecurityFilterChain</span></span><br><span class="line">    <span class="keyword">private</span> List&lt;SecurityFilterChain&gt; filterChains;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(ServletRequest request, ServletResponse response,</span></span></span><br><span class="line"><span class="function"><span class="params">			FilterChain chain)</span> <span class="keyword">throws</span> IOException, ServletException </span>&#123;</span><br><span class="line">		<span class="keyword">boolean</span> clearContext = request.getAttribute(FILTER_APPLIED) == <span class="keyword">null</span>;</span><br><span class="line">		<span class="keyword">if</span> (clearContext) &#123;</span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				request.setAttribute(FILTER_APPLIED, Boolean.TRUE);</span><br><span class="line">				doFilterInternal(request, response, chain);</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">finally</span> &#123;</span><br><span class="line">				SecurityContextHolder.clearContext();</span><br><span class="line">				request.removeAttribute(FILTER_APPLIED);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			doFilterInternal(request, response, chain);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doFilterInternal</span><span class="params">(ServletRequest request, ServletResponse response,</span></span></span><br><span class="line"><span class="function"><span class="params">			FilterChain chain)</span> <span class="keyword">throws</span> IOException, ServletException </span>&#123;</span><br><span class="line"></span><br><span class="line">		FirewalledRequest fwRequest = firewall</span><br><span class="line">				.getFirewalledRequest((HttpServletRequest) request);</span><br><span class="line">		HttpServletResponse fwResponse = firewall</span><br><span class="line">				.getFirewalledResponse((HttpServletResponse) response);</span><br><span class="line">		</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 根据请求获取匹配的一组Filter</span></span><br><span class="line">        <span class="comment">// 这里返回的Filter就是上述的那些AuthenticationFilter,比如UsernamePasswordAuthenticationFilter</span></span><br><span class="line">		List&lt;Filter&gt; filters = getFilters(fwRequest);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (filters == <span class="keyword">null</span> || filters.size() == <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span> (logger.isDebugEnabled()) &#123;</span><br><span class="line">				logger.debug(UrlUtils.buildRequestUrl(fwRequest)</span><br><span class="line">						+ (filters == <span class="keyword">null</span> ? <span class="string">" has no matching filters"</span></span><br><span class="line">								: <span class="string">" has an empty filter list"</span>));</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			fwRequest.reset();</span><br><span class="line"></span><br><span class="line">			chain.doFilter(fwRequest, fwResponse);</span><br><span class="line"></span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		VirtualFilterChain vfc = <span class="keyword">new</span> VirtualFilterChain(fwRequest, chain, filters);</span><br><span class="line">		vfc.doFilter(fwRequest, fwResponse);</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * Returns the first filter chain matching the supplied URL.</span></span><br><span class="line"><span class="comment">	 *</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> request the request to match</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@return</span> an ordered array of Filters defining the filter chain</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> List&lt;Filter&gt; <span class="title">getFilters</span><span class="params">(HttpServletRequest request)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">for</span> (SecurityFilterChain chain : filterChains) &#123;</span><br><span class="line">			<span class="keyword">if</span> (chain.matches(request)) &#123;</span><br><span class="line">				<span class="keyword">return</span> chain.getFilters();</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>到此，我们可以总结出如下的流程图：</p>
+<p><img src="/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/FilterChainProxy流程.png" alt=""></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A4%E8%AF%81%EF%BC%8C%E6%8E%88%E6%9D%83%EF%BC%8CSpringSecurity/" rel="tag"># 认证，授权，SpringSecurity</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/" rel="prev" title="从磁盘结构到数据库索引">
+      <i class="fa fa-chevron-left"></i> 从磁盘结构到数据库索引
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/07/22/%E5%BC%80%E5%90%AFspring-boot/" rel="next" title="开启spring boot">
+      开启spring boot <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#SpringSecurity，为什么？"><span class="nav-number">1.</span> <span class="nav-text">SpringSecurity，为什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Spring-Security介绍"><span class="nav-number">2.</span> <span class="nav-text">Spring Security介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#常用权限拦截器"><span class="nav-number">2.1.</span> <span class="nav-text">常用权限拦截器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Filter如何执行"><span class="nav-number">2.2.</span> <span class="nav-text">Filter如何执行</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>

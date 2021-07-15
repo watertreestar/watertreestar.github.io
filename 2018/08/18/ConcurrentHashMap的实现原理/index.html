@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="HashMap是一个线程不安全的容器，当容量大于总量*负载因子发生扩容时可能会出现环形链表从而导致死循环  扩容就是rehash，这个会重新将原数组的内容重新hash到新的扩容数组中，在多线程的环境下，存在同时其他的元素也在进行put操作，如果hash值相同，可能出现同时在同一数组下用链表表示  因此引进了线程安全的容器ConcurrentHashMap">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ConcurrentHashMap的实现原理">
+<meta property="og:url" content="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="HashMap是一个线程不安全的容器，当容量大于总量*负载因子发生扩容时可能会出现环形链表从而导致死循环  扩容就是rehash，这个会重新将原数组的内容重新hash到新的扩容数组中，在多线程的环境下，存在同时其他的元素也在进行put操作，如果hash值相同，可能出现同时在同一数组下用链表表示  因此引进了线程安全的容器ConcurrentHashMap">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap1.7%E4%B8%AD%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap1.8%E4%B8%AD%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap%E7%9A%84%E6%9E%84%E9%80%A0%E6%96%B9%E6%B3%95.png">
+<meta property="article:published_time" content="2018-08-18T19:22:34.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:17.965Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="集合">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap1.7%E4%B8%AD%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+
+<link rel="canonical" href="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>ConcurrentHashMap的实现原理 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ConcurrentHashMap的实现原理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-08-18 19:22:34" itemprop="dateCreated datePublished" datetime="2018-08-18T19:22:34+00:00">2018-08-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:17" itemprop="dateModified" datetime="2021-07-15T16:43:17+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">Java基础</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>HashMap是一个线程不安全的容器，当容量大于<code>总量*负载因子</code>发生扩容时可能会出现环形链表从而导致死循环</p>
+<blockquote>
+<p>扩容就是rehash，这个会重新将原数组的内容重新hash到新的扩容数组中，在多线程的环境下，存在同时其他的元素也在进行put操作，如果hash值相同，可能出现同时在同一数组下用链表表示</p>
+</blockquote>
+<p>因此引进了线程安全的容器<code>ConcurrentHashMap</code></p>
+<a id="more"></a>
+<p><code>ConcurrentHashMap</code>在JDK1.7 和 JDK1.8中的实现有所不同</p>
+<h4 id="JDK1-7中的实现"><a href="#JDK1-7中的实现" class="headerlink" title="JDK1.7中的实现"></a>JDK1.7中的实现</h4><h5 id="先来看看1-7中数据结构实现的图示"><a href="#先来看看1-7中数据结构实现的图示" class="headerlink" title="先来看看1.7中数据结构实现的图示"></a>先来看看1.7中数据结构实现的图示</h5><p><img src="/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap1.7中数据结构.png" alt="img"></p>
+<p>由图中可以看出ConcurrentHashMap是由<code>Segment数组</code>，<code>HashEntry数组</code>组成的。这里和<code>HashMap</code>一样,都是<code>数组+链表</code>的形式</p>
+<p>ConcurrentHashMap采用了分段锁的技术，其中一个<code>Segement</code>就是一个Lock，其继承自<code>ReentrantLock</code>,这样当一个线程占用了锁访问一个<code>Segment</code>时，不会影响到其它的<code>Segment</code></p>
+<p><code>Segment</code>数组的意义就是将一个大的table分成多个小的table来进行加锁，而一个Segment存储的是HashEntry数组+链表，这和HashMap的数据结构一致</p>
+<ul>
+<li><p>Segment的大小最多65536个，没有指定concurrencyLevel元素初始化，Segment的大小ssize默认为16</p>
+</li>
+<li><p>每一个Segment元素下的HashEntry的初始化也是按照位于运算来计算</p>
+<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">int</span> cap = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">while</span> (cap &lt; c)</span><br><span class="line">    cap &lt;&lt;= <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+<p>所以，HashEntry数组的最小为2</p>
+<p>​</p>
+</li>
+</ul>
+<h5 id="get-方法"><a href="#get-方法" class="headerlink" title="get 方法"></a>get 方法</h5><p>ConcurrentHashMap的get方法在整个过程中都不需要加锁</p>
+<p>执行<code>get</code>方法的时候，需要先将<code>key</code>通过<code>hash</code>之后定位到具体的<code>Segment</code>，然后再通过一次<code>hash</code>定位到具体的元素上。</p>
+<p>注意：为了保证可见性,HashEntry中的 <code>value</code>属性使用了<code>volatile</code>修饰</p>
+<h5 id="put-方法"><a href="#put-方法" class="headerlink" title="put 方法"></a>put 方法</h5><p>内部 <code>HashEntry</code> 类</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> HashEntry&lt;K,V&gt; &#123;</span><br><span class="line">       <span class="keyword">final</span> <span class="keyword">int</span> hash;</span><br><span class="line">       <span class="keyword">final</span> K key;</span><br><span class="line">       <span class="keyword">volatile</span> V value;</span><br><span class="line">       <span class="keyword">volatile</span> HashEntry&lt;K,V&gt; <span class="keyword">next</span>;</span><br><span class="line"></span><br><span class="line">       HashEntry(<span class="keyword">int</span> hash, K key, V value, HashEntry&lt;K,V&gt; <span class="keyword">next</span>) &#123;</span><br><span class="line">           <span class="keyword">this</span>.hash = hash;</span><br><span class="line">           <span class="keyword">this</span>.key = key;</span><br><span class="line">           <span class="keyword">this</span>.value = value;</span><br><span class="line">           <span class="keyword">this</span>.<span class="keyword">next</span> = <span class="keyword">next</span>;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>虽然 HashEntry 中的 value 是用 <code>volatile</code> 关键词修饰的，但是并不能保证并发的原子性，所以 put 操作时仍然需要加锁处理</p>
+<p>首先也是通过 Key 的 Hash 定位到具体的 Segment，在 put 之前会进行一次扩容校验。</p>
+<p>Segment实现了ReentrantLock,也就带有锁的功能，当执行put操作时，会进行第一次key的hash来定位Segment的位置，如果该Segment还没有初始化，即通过CAS操作进行赋值，然后进行第二次hash操作，找到相应的HashEntry的位置，这里会利用继承过来的锁的特性，在将数据插入指定的HashEntry位置时（链表的尾端），会通过继承ReentrantLock的tryLock（）方法尝试去获取锁，如果获取成功就直接插入相应的位置，如果已经有线程获取该Segment的锁，那当前线程会以自旋的方式去继续的调用tryLock（）方法去获取锁，超过指定次数就挂起，等待唤醒。</p>
+<h5 id="size-方法"><a href="#size-方法" class="headerlink" title="size 方法"></a>size 方法</h5><p>每一个<code>Segment</code>都有一个volatile修饰的全局变量<code>count</code>,要获取整个Map集合的size的时候，就需要获取每个Segment的count，然后累加起来。虽然<code>count</code>变量被<code>volatile</code>修饰符修饰，但这个不能保证操作的原子性，可能出现当获取size的时候还有其它线程在做插入操作。这样就引发了并发的问题</p>
+<p>但是如果在获取size的时候将其它操作也加锁，这样就造成效率问题</p>
+<p>所以解决的办法是：先尝试两次将<code>count</code>累加，当两次结果不一致时，才加锁来统计count</p>
+<p><code>Councurrent</code> 中每一个<code>Segment</code>都包含一个<code>modCount</code>变量，每当进行一次添加/删除操作，<code>modCount</code>的值就会发生变化，只要<code>modCount</code>发生变化那么就认为容器大小也在发生变化</p>
+<h4 id="JDK-1-8实现"><a href="#JDK-1-8实现" class="headerlink" title="JDK 1.8实现"></a>JDK 1.8实现</h4><h5 id="先来看看1-8中数据结构实现的图示"><a href="#先来看看1-8中数据结构实现的图示" class="headerlink" title="先来看看1.8中数据结构实现的图示"></a>先来看看1.8中数据结构实现的图示</h5><p><img src="/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap1.8中数据结构.png" alt="img"></p>
+<p>JDK 1.8中的<code>ConcurrentHashMap</code>和1.7中的实现有着明显的差异</p>
+<p>其中抛弃了原有的 Segment 分段锁，而采用了 <code>CAS + synchronized</code> 来保证并发安全性.</p>
+<p>采用了<code>Node数组+链表+红黑树</code>的数据结构来实现</p>
+<h5 id="基本常量设计和数据结构"><a href="#基本常量设计和数据结构" class="headerlink" title="基本常量设计和数据结构"></a>基本常量设计和数据结构</h5><p>在深入了解JDK1.8中的<code>ConcurrentHashMap</code>前，先来了解一下基本常量和数据结构</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// node数组最大容量：2^30=1073741824</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAXIMUM_CAPACITY = <span class="number">1</span> &lt;&lt; <span class="number">30</span>;</span><br><span class="line"><span class="comment">// 默认初始值，必须是2的幕数</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> DEFAULT_CAPACITY = <span class="number">16</span>;</span><br><span class="line"><span class="comment">//数组可能最大值，需要与toArray（）相关方法关联</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAX_ARRAY_SIZE = Integer.MAX_VALUE - <span class="number">8</span>;</span><br><span class="line"><span class="comment">//并发级别，遗留下来的，为兼容以前的版本</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> DEFAULT_CONCURRENCY_LEVEL = <span class="number">16</span>;</span><br><span class="line"><span class="comment">// 负载因子</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">float</span> LOAD_FACTOR = <span class="number">0.75</span>f;</span><br><span class="line"><span class="comment">// 链表转红黑树阀值,&gt; 8 链表转换为红黑树</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> TREEIFY_THRESHOLD = <span class="number">8</span>;</span><br><span class="line"><span class="comment">//树转链表阀值，小于等于6（tranfer时，lc、hc=0两个计数器分别++记录原bin、新binTreeNode数量，&lt;=UNTREEIFY_THRESHOLD 则untreeify(lo)）</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> UNTREEIFY_THRESHOLD = <span class="number">6</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MIN_TREEIFY_CAPACITY = <span class="number">64</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MIN_TRANSFER_STRIDE = <span class="number">16</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span> RESIZE_STAMP_BITS = <span class="number">16</span>;</span><br><span class="line"><span class="comment">// 2^15-1，help resize的最大线程数</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAX_RESIZERS = (<span class="number">1</span> &lt;&lt; (<span class="number">32</span> - RESIZE_STAMP_BITS)) - <span class="number">1</span>;</span><br><span class="line"><span class="comment">// 32-16=16，sizeCtl中记录size大小的偏移量</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> RESIZE_STAMP_SHIFT = <span class="number">32</span> - RESIZE_STAMP_BITS;</span><br><span class="line"><span class="comment">// forwarding nodes的hash值</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MOVED     = -<span class="number">1</span>; </span><br><span class="line"><span class="comment">// 树根节点的hash值</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> TREEBIN   = -<span class="number">2</span>; </span><br><span class="line"><span class="comment">// ReservationNode的hash值</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> RESERVED  = -<span class="number">3</span>; </span><br><span class="line"><span class="comment">// 可用处理器数量</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> NCPU = <span class="keyword">Runtime</span>.getRuntime().availableProcessors();</span><br><span class="line"><span class="comment">//存放node的数组</span></span><br><span class="line"><span class="keyword">transient</span> <span class="keyword">volatile</span> Node&lt;K,V&gt;[] table;</span><br><span class="line"><span class="comment">/*控制标识符，用来控制table的初始化和扩容的操作，不同的值有不同的含义</span></span><br><span class="line"><span class="comment"> *当为负数时：-1代表正在初始化，-N代表有N-1个线程正在 进行扩容</span></span><br><span class="line"><span class="comment"> *当为0时：代表当时的table还没有被初始化</span></span><br><span class="line"><span class="comment"> *当为正数时：表示初始化或者下一次进行扩容的大小</span></span><br><span class="line"><span class="comment">private transient volatile int sizeCtl;</span></span><br></pre></td></tr></table></figure>
+<h5 id="Node的数据结构"><a href="#Node的数据结构" class="headerlink" title="Node的数据结构"></a>Node的数据结构</h5><figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">static <span class="class"><span class="keyword">class</span> <span class="title">Node</span>&lt;<span class="type">K,V</span>&gt; <span class="title">implements</span> <span class="title">Map</span>.<span class="title">Entry</span>&lt;<span class="type">K,V</span>&gt; </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> int hash;</span><br><span class="line">        <span class="keyword">final</span> K key;</span><br><span class="line">        <span class="keyword">volatile</span> V <span class="keyword">val</span>;</span><br><span class="line">        <span class="keyword">volatile</span> Node&lt;K,V&gt; next;</span><br><span class="line"></span><br><span class="line">        Node(int hash, K key, V <span class="keyword">val</span>, Node&lt;K,V&gt; next) &#123;</span><br><span class="line">            <span class="keyword">this</span>.hash = hash;</span><br><span class="line">            <span class="keyword">this</span>.key = key;</span><br><span class="line">            <span class="keyword">this</span>.<span class="keyword">val</span> = <span class="keyword">val</span>;</span><br><span class="line">            <span class="keyword">this</span>.next = next;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> K getKey()       &#123; <span class="keyword">return</span> key; &#125;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> V getValue()     &#123; <span class="keyword">return</span> <span class="keyword">val</span>; &#125;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> int hashCode()   &#123; <span class="keyword">return</span> key.hashCode() ^ <span class="keyword">val</span>.hashCode(); &#125;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> String toString()&#123; <span class="keyword">return</span> key + <span class="string">"="</span> + <span class="keyword">val</span>; &#125;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> V setValue(V value) &#123;</span><br><span class="line">            <span class="keyword">throw</span> new UnsupportedOperationException();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">final</span> boolean equals(Object o) &#123;</span><br><span class="line">            Object k, v, u; Map.Entry&lt;?,?&gt; e;</span><br><span class="line">            <span class="keyword">return</span> ((o instanceof Map.Entry) &amp;&amp;</span><br><span class="line">                    (k = (e = (Map.Entry&lt;?,?&gt;)o).getKey()) != <span class="literal">null</span> &amp;&amp;</span><br><span class="line">                    (v = e.getValue()) != <span class="literal">null</span> &amp;&amp;</span><br><span class="line">                    (k == key || k.equals(key)) &amp;&amp;</span><br><span class="line">                    (v == (u = <span class="keyword">val</span>) || v.equals(u)));</span><br><span class="line">        &#125;</span><br><span class="line">         <span class="comment">//用于map中的get（）方法，子类重写</span></span><br><span class="line">        Node&lt;K,V&gt; find(int h, Object k) &#123;</span><br><span class="line">            Node&lt;K,V&gt; e = <span class="keyword">this</span>;</span><br><span class="line">            <span class="keyword">if</span> (k != <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="keyword">do</span> &#123;</span><br><span class="line">                    K ek;</span><br><span class="line">                    <span class="keyword">if</span> (e.hash == h &amp;&amp;</span><br><span class="line">                        ((ek = e.key) == k || (ek != <span class="literal">null</span> &amp;&amp; k.equals(ek))))</span><br><span class="line">                        <span class="keyword">return</span> e;</span><br><span class="line">                &#125; <span class="keyword">while</span> ((e = e.next) != <span class="literal">null</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="TreeNode的数据结构"><a href="#TreeNode的数据结构" class="headerlink" title="TreeNode的数据结构"></a>TreeNode的数据结构</h5><p><code>TreeNode</code>继承与<code>Node</code>，但是数据结构换成了二叉树结构，它是<code>红黑树</code>的数据的存储结构，用于红黑树中存储数据，当链表的节点数大于<code>8</code>时会转换成红黑树的结构，他就是通过TreeNode作为存储结构代替Node来转换成黑红树</p>
+<p>红黑树数据结构源代码</p>
+<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">static <span class="keyword">final</span> <span class="keyword">class</span> <span class="symbol">TreeNode</span>&lt;<span class="symbol">K,<span class="symbol">V</span></span>&gt; <span class="symbol">extends</span> <span class="symbol">Node</span>&lt;<span class="symbol">K,<span class="symbol">V</span></span>&gt; &#123;</span><br><span class="line">    <span class="comment">//树形结构的属性定义</span></span><br><span class="line">    TreeNode&lt;K,V&gt; parent;  <span class="comment">// red-black tree links</span></span><br><span class="line">    TreeNode&lt;K,V&gt; left;</span><br><span class="line">    TreeNode&lt;K,V&gt; right;</span><br><span class="line">    TreeNode&lt;K,V&gt; prev;    <span class="comment">// needed to unlink next upon deletion</span></span><br><span class="line">    <span class="built_in">bool</span>ean red; <span class="comment">//标志红黑树的红节点</span></span><br><span class="line">    TreeNode(<span class="built_in">int</span> hash, K key, V val, Node&lt;K,V&gt; next,</span><br><span class="line">             TreeNode&lt;K,V&gt; parent) &#123;</span><br><span class="line">        <span class="keyword">super</span>(hash, key, val, next);</span><br><span class="line">        <span class="keyword">this</span>.parent = parent;</span><br><span class="line">    &#125;</span><br><span class="line">    Node&lt;K,V&gt; find(<span class="built_in">int</span> h, Object k) &#123;</span><br><span class="line">        <span class="keyword">return</span> findTreeNode(h, k, <span class="literal">null</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//根据key查找 从根节点开始找出相应的TreeNode，</span></span><br><span class="line">    <span class="keyword">final</span> TreeNode&lt;K,V&gt; findTreeNode(<span class="built_in">int</span> h, Object k, Class&lt;?&gt; kc) &#123;</span><br><span class="line">        <span class="keyword">if</span> (k != <span class="literal">null</span>) &#123;</span><br><span class="line">            TreeNode&lt;K,V&gt; p = <span class="keyword">this</span>;</span><br><span class="line">            <span class="keyword">do</span>  &#123;</span><br><span class="line">                <span class="built_in">int</span> ph, dir; K pk; TreeNode&lt;K,V&gt; q;</span><br><span class="line">                TreeNode&lt;K,V&gt; pl = p.left, pr = p.right;</span><br><span class="line">                <span class="keyword">if</span> ((ph = p.hash) &gt; h)</span><br><span class="line">                    p = pl;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (ph &lt; h)</span><br><span class="line">                    p = pr;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> ((pk = p.key) == k || (pk != <span class="literal">null</span> &amp;&amp; k.equals(pk)))</span><br><span class="line">                    <span class="keyword">return</span> p;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (pl == <span class="literal">null</span>)</span><br><span class="line">                    p = pr;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (pr == <span class="literal">null</span>)</span><br><span class="line">                    p = pl;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> ((kc != <span class="literal">null</span> ||</span><br><span class="line">                          (kc = comparableClassFor(k)) != <span class="literal">null</span>) &amp;&amp;</span><br><span class="line">                         (dir = compareComparables(kc, k, pk)) != <span class="number">0</span>)</span><br><span class="line">                    p = (dir &lt; <span class="number">0</span>) ? pl : pr;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> ((q = pr.findTreeNode(h, k, kc)) != <span class="literal">null</span>)</span><br><span class="line">                    <span class="keyword">return</span> q;</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                    p = pl;</span><br><span class="line">            &#125; <span class="keyword">while</span> (p != <span class="literal">null</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="ConcurrentHashMap的初始化"><a href="#ConcurrentHashMap的初始化" class="headerlink" title="ConcurrentHashMap的初始化"></a>ConcurrentHashMap的初始化</h5><p>我们通过ConcurrentHashMap的构造方法可以看出，在构造方法中并没有做初始化的事。初始化放到了put操作中，这是和其它集合由区别的地方</p>
+<p><img src="/2018/08/18/ConcurrentHashMap%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/ConcurrentHashMap的构造方法.png" alt="img"></p>
+<h5 id="put-操作过程"><a href="#put-操作过程" class="headerlink" title="put 操作过程"></a>put 操作过程</h5><p>查看put 方法</p>
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** Implementation for put and putIfAbsent */</span></span><br><span class="line">final V <span class="built_in">putVal</span>(K <span class="built_in">key</span>, V value, boolean onlyIfAbsent) &#123;</span><br><span class="line">    <span class="keyword">if</span> (key == <span class="built_in">null</span> || value == <span class="built_in">null</span>) throw <span class="keyword">new</span> <span class="built_in">NullPointerException</span>();</span><br><span class="line">    int hash = <span class="built_in">spread</span>(<span class="built_in">key</span>.<span class="built_in">hashCode</span>()); <span class="comment">//两次hash，减少hash冲突，可以均匀分布</span></span><br><span class="line">    int binCount = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (Node&lt;K,V&gt;[] <span class="built_in">tab</span> = table;;) &#123; //对这个table进行迭代</span><br><span class="line">        Node&lt;K,V&gt; f; int n, i, fh;</span><br><span class="line">        <span class="comment">//这里就是上面构造方法没有进行初始化，在这里进行判断，为null就调用initTable进行初始化，属于懒汉模式初始化</span></span><br><span class="line">        <span class="keyword">if</span> (tab == <span class="built_in">null</span> || (n = tab.length) == <span class="number">0</span>)</span><br><span class="line">            tab = <span class="built_in">initTable</span>();</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> ((f = <span class="built_in">tabAt</span>(<span class="built_in">tab</span>, i = (n - <span class="number">1</span>) &amp; hash)) == <span class="built_in">null</span>) &#123;<span class="comment">//如果i位置没有数据，就直接无锁插入</span></span><br><span class="line">            <span class="keyword">if</span> (<span class="built_in">casTabAt</span>(<span class="built_in">tab</span>, i, <span class="built_in">null</span>,</span><br><span class="line">                         new Node&lt;K,V&gt;(hash, <span class="built_in">key</span>, value, <span class="built_in">null</span>)))</span><br><span class="line">                <span class="keyword">break</span>;                   <span class="comment">// no lock when adding to empty bin</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> ((fh = f.hash) == MOVED)<span class="comment">//如果在进行扩容，则先进行扩容操作</span></span><br><span class="line">            tab = <span class="built_in">helpTransfer</span>(<span class="built_in">tab</span>, f);</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            V oldVal = <span class="built_in">null</span>;</span><br><span class="line">            <span class="comment">//如果以上条件都不满足，那就要进行加锁操作，也就是存在hash冲突，锁住链表或者红黑树的头结点</span></span><br><span class="line">            <span class="built_in">synchronized</span> (f) &#123;</span><br><span class="line">                <span class="keyword">if</span> (<span class="built_in">tabAt</span>(<span class="built_in">tab</span>, i) == f) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (fh &gt;= <span class="number">0</span>) &#123; <span class="comment">//表示该节点是链表结构</span></span><br><span class="line">                        binCount = <span class="number">1</span>;</span><br><span class="line">                        <span class="keyword">for</span> (Node&lt;K,V&gt; e = f;; ++binCount) &#123;</span><br><span class="line">                            K ek;</span><br><span class="line">                            <span class="comment">//这里涉及到相同的key进行put就会覆盖原先的value</span></span><br><span class="line">                            <span class="keyword">if</span> (e.hash == hash &amp;&amp;</span><br><span class="line">                                ((ek = e.key) == <span class="built_in">key</span> ||</span><br><span class="line">                                 (ek != <span class="built_in">null</span> &amp;&amp; key.equals(ek)))) &#123;</span><br><span class="line">                                oldVal = e.val;</span><br><span class="line">                                <span class="keyword">if</span> (!onlyIfAbsent)</span><br><span class="line">                                    e.val = value;</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                            Node&lt;K,V&gt; pred = e;</span><br><span class="line">                            <span class="keyword">if</span> ((e = e.next) == <span class="built_in">null</span>) &#123;  <span class="comment">//插入链表尾部</span></span><br><span class="line">                                pred.next = <span class="keyword">new</span> Node&lt;K,V&gt;(hash, <span class="built_in">key</span>,</span><br><span class="line">                                                          value, <span class="built_in">null</span>);</span><br><span class="line">                                <span class="keyword">break</span>;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">else</span> <span class="keyword">if</span> (f instanceof TreeBin) &#123;<span class="comment">//红黑树结构</span></span><br><span class="line">                        Node&lt;K,V&gt; p;</span><br><span class="line">                        binCount = <span class="number">2</span>;</span><br><span class="line">                        <span class="comment">//红黑树结构旋转插入</span></span><br><span class="line">                        <span class="keyword">if</span> ((p = ((TreeBin&lt;K,V&gt;)f).<span class="built_in">putTreeVal</span>(hash, <span class="built_in">key</span>,</span><br><span class="line">                                                       value)) != <span class="built_in">null</span>) &#123;</span><br><span class="line">                            oldVal = p.val;</span><br><span class="line">                            <span class="keyword">if</span> (!onlyIfAbsent)</span><br><span class="line">                                p.val = value;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (binCount != <span class="number">0</span>) &#123; <span class="comment">//如果链表的长度大于8时就会进行红黑树的转换</span></span><br><span class="line">                <span class="keyword">if</span> (binCount &gt;= TREEIFY_THRESHOLD)</span><br><span class="line">                    <span class="built_in">treeifyBin</span>(<span class="built_in">tab</span>, i);</span><br><span class="line">                <span class="keyword">if</span> (oldVal != <span class="built_in">null</span>)</span><br><span class="line">                    <span class="keyword">return</span> oldVal;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">addCount</span>(<span class="number">1</span>L, binCount);<span class="comment">//统计size，并且检查是否需要扩容</span></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>put 操作可以描述为以下过程</p>
+<ol>
+<li>没有初始化就先调用initTable()方法初始化table数组</li>
+<li>如果没有hash冲突就直接CAS插入</li>
+<li>如果还在扩容就先进行扩容</li>
+<li>如果存在hash冲突，就加锁来保证线程安全，这里有两种情况，一种是链表形式就直接遍历到尾端插入，一种是红黑树就按照红黑树结构插入</li>
+<li>最后一个如果该链表的数量大于阈值8，就要先转换成黑红树的结构，</li>
+<li>如果添加成功就调用addCount（）方法统计size，并且检查是否需要扩容</li>
+</ol>
+<h5 id="initTable-方法"><a href="#initTable-方法" class="headerlink" title="initTable 方法"></a>initTable 方法</h5><figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">private final Node&lt;K,V&gt;[] initTable() &#123;</span><br><span class="line">    Node&lt;K,V&gt;[] <span class="keyword">tab</span>; int <span class="keyword">sc</span>;</span><br><span class="line">    <span class="keyword">while</span> ((<span class="keyword">tab</span> = <span class="keyword">table</span>) == null || <span class="keyword">tab</span>.length == 0) &#123;<span class="comment">//空的table才能进入初始化操作</span></span><br><span class="line">        <span class="keyword">if</span> ((<span class="keyword">sc</span> = sizeCtl) &lt; 0) <span class="comment">//sizeCtl&lt;0表示其他线程已经在初始化了或者扩容了，挂起当前线程 </span></span><br><span class="line">            Thread.yield(); <span class="comment">// lost initialization race; just spin</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (<span class="keyword">U</span>.compareAndSwapInt(this, SIZECTL, <span class="keyword">sc</span>, -1)) &#123;<span class="comment">//CAS操作SIZECTL为-1，表示初始化状态</span></span><br><span class="line">            try &#123;</span><br><span class="line">                <span class="keyword">if</span> ((<span class="keyword">tab</span> = <span class="keyword">table</span>) == null || <span class="keyword">tab</span>.length == 0) &#123;</span><br><span class="line">                    int <span class="keyword">n</span> = (<span class="keyword">sc</span> &gt; 0) ? <span class="keyword">sc</span> : DEFAULT_CAPACITY;</span><br><span class="line">                    @SuppressWarnings(<span class="string">"unchecked"</span>)</span><br><span class="line">                    Node&lt;K,V&gt;[] nt = (Node&lt;K,V&gt;[])new Node&lt;?,?&gt;[<span class="keyword">n</span>];<span class="comment">//初始化</span></span><br><span class="line">                    <span class="keyword">table</span> = <span class="keyword">tab</span> = nt;</span><br><span class="line">                    <span class="keyword">sc</span> = <span class="keyword">n</span> - (<span class="keyword">n</span> &gt;&gt;&gt; 2);<span class="comment">//记录下次扩容的大小</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125; finally &#123;</span><br><span class="line">                sizeCtl = <span class="keyword">sc</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">tab</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="get-操作过程"><a href="#get-操作过程" class="headerlink" title="get 操作过程"></a>get 操作过程</h5><p>ConcurrentHashMap的get操作的流程很简单，也很清晰，可以分为三个步骤来描述</p>
+<ol>
+<li>计算hash值，定位到该table索引位置，如果是首节点符合就返回</li>
+<li>如果遇到扩容的时候，会调用标志正在扩容节点ForwardingNode的find方法，查找该节点，匹配就返回</li>
+<li>以上都不符合的话，就往下遍历节点，匹配就返回，否则最后就返回null</li>
+</ol>
+<h5 id="size-操作"><a href="#size-操作" class="headerlink" title="size 操作"></a>size 操作</h5><figure class="highlight cs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">size</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">    <span class="keyword">long</span> n = sumCount();</span><br><span class="line">    <span class="keyword">return</span> ((n &lt; <span class="number">0L</span>) ? <span class="number">0</span> :</span><br><span class="line">            (n &gt; (<span class="keyword">long</span>)Integer.MAX_VALUE) ? Integer.MAX_VALUE :</span><br><span class="line">            (<span class="keyword">int</span>)n);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function">final <span class="keyword">long</span> <span class="title">sumCount</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">    CounterCell[] <span class="keyword">as</span> = counterCells; CounterCell a; <span class="comment">//变化的数量</span></span><br><span class="line">    <span class="keyword">long</span> sum = baseCount;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">as</span> != <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="keyword">as</span>.length; ++i) &#123;</span><br><span class="line">            <span class="keyword">if</span> ((a = <span class="keyword">as</span>[i]) != <span class="literal">null</span>)</span><br><span class="line">                sum += a.<span class="keyword">value</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> sum;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>其实可以看出JDK1.8版本的ConcurrentHashMap的数据结构已经接近HashMap，相对而言，ConcurrentHashMap只是增加了同步的操作来控制并发，从JDK1.7版本的ReentrantLock+Segment+HashEntry，到JDK1.8版本中synchronized+CAS+HashEntry+红黑树</p>
+<p>总结如下：</p>
+<ol>
+<li>JDK1.8的实现降低锁的粒度，JDK1.7版本锁的粒度是基于Segment的，包含多个HashEntry，而JDK1.8锁的粒度就是HashEntry（首节点）</li>
+<li>JDK1.8版本的数据结构变得更加简单，使得操作也更加清晰流畅，因为已经使用synchronized来进行同步，所以不需要分段锁的概念，也就不需要Segment这种数据结构了，由于粒度的降低，实现的复杂度也增加了</li>
+<li>JDK1.8使用红黑树来优化链表，基于长度很长的链表的遍历是一个很漫长的过程，而红黑树的遍历效率是很快的，代替一定阈值的链表，这样形成一个最佳拍档</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+              <a href="/tags/%E9%9B%86%E5%90%88/" rel="tag"># 集合</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/08/18/TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%92%8C%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B/" rel="prev" title="TCP三次握手和四次挥手">
+      <i class="fa fa-chevron-left"></i> TCP三次握手和四次挥手
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/08/20/%E4%BA%8C%E5%8F%89%E6%9F%A5%E6%89%BE%E6%A0%91%EF%BC%8C%E4%BA%8C%E5%8F%89%E5%B9%B3%E8%A1%A1%E6%A0%91/" rel="next" title="二叉查找树，二叉平衡树">
+      二叉查找树，二叉平衡树 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#JDK1-7中的实现"><span class="nav-number">1.</span> <span class="nav-text">JDK1.7中的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#先来看看1-7中数据结构实现的图示"><span class="nav-number">1.1.</span> <span class="nav-text">先来看看1.7中数据结构实现的图示</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#get-方法"><span class="nav-number">1.2.</span> <span class="nav-text">get 方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#put-方法"><span class="nav-number">1.3.</span> <span class="nav-text">put 方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#size-方法"><span class="nav-number">1.4.</span> <span class="nav-text">size 方法</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#JDK-1-8实现"><span class="nav-number">2.</span> <span class="nav-text">JDK 1.8实现</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#先来看看1-8中数据结构实现的图示"><span class="nav-number">2.1.</span> <span class="nav-text">先来看看1.8中数据结构实现的图示</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#基本常量设计和数据结构"><span class="nav-number">2.2.</span> <span class="nav-text">基本常量设计和数据结构</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Node的数据结构"><span class="nav-number">2.3.</span> <span class="nav-text">Node的数据结构</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#TreeNode的数据结构"><span class="nav-number">2.4.</span> <span class="nav-text">TreeNode的数据结构</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#ConcurrentHashMap的初始化"><span class="nav-number">2.5.</span> <span class="nav-text">ConcurrentHashMap的初始化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#put-操作过程"><span class="nav-number">2.6.</span> <span class="nav-text">put 操作过程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#initTable-方法"><span class="nav-number">2.7.</span> <span class="nav-text">initTable 方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#get-操作过程"><span class="nav-number">2.8.</span> <span class="nav-text">get 操作过程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#size-操作"><span class="nav-number">2.9.</span> <span class="nav-text">size 操作</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#总结"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="磁盘结构 按照顺时针方向，一个盘片由很多section组成，编号0-N。从里向外分，又由多个track组成，编号0-N,section和track交叉的地方叫做block,所以一个block可以由section和track来定位。每一个block的大小是一样的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从磁盘结构到数据库索引">
+<meta property="og:url" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="磁盘结构 按照顺时针方向，一个盘片由很多section组成，编号0-N。从里向外分，又由多个track组成，编号0-N,section和track交叉的地方叫做block,所以一个block可以由section和track来定位。每一个block的大小是一样的。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/Disk%E7%BB%93%E6%9E%84.jpg">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/Disk%E4%B8%AD%E4%B8%80%E4%B8%AAblock%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84.jpg">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/employee%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/employee%E5%9C%A8%E5%92%8C%E7%A3%81%E7%9B%98%E7%9A%84%E5%85%B3%E7%B3%BB.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/%E7%AE%80%E5%8D%95%E7%9A%84%E7%B4%A2%E5%BC%95.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/%E4%BA%8C%E7%BA%A7%E7%B4%A2%E5%BC%95.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/BST%E4%BA%8C%E5%8F%89%E6%90%9C%E7%B4%A2%E6%A0%91.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/%E5%A4%9A%E8%B7%AF%E6%90%9C%E7%B4%A2%E6%A0%91.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/%E5%A4%9A%E8%B7%AF%E6%90%9C%E7%B4%A2%E6%A0%91%E7%BC%BA%E9%99%B7.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/4-way%E6%90%9C%E7%B4%A2%E6%A0%91.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/4-way%E6%90%9C%E7%B4%A2%E6%A0%91%E5%81%9A%E7%B4%A2%E5%BC%95%E5%9B%BE%E7%A4%BA.png">
+<meta property="og:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/B+%E6%A0%91%E7%B4%A2%E5%BC%95.png">
+<meta property="article:published_time" content="2019-03-17T09:10:49.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:18.037Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="数据库索引">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/Disk%E7%BB%93%E6%9E%84.jpg">
+
+<link rel="canonical" href="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>从磁盘结构到数据库索引 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          从磁盘结构到数据库索引
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-03-17 09:10:49" itemprop="dateCreated datePublished" datetime="2019-03-17T09:10:49+00:00">2019-03-17</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:18" itemprop="dateModified" datetime="2021-07-15T16:43:18+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/MySQL/" itemprop="url" rel="index"><span itemprop="name">MySQL</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="磁盘结构"><a href="#磁盘结构" class="headerlink" title="磁盘结构"></a>磁盘结构</h2><p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/Disk结构.jpg" alt=""></p>
+<p>按照顺时针方向，一个盘片由很多<code>section</code>组成，编号<code>0-N</code>。从里向外分，又由多个<code>track</code>组成，编号<code>0-N</code>,<code>section</code>和<code>track</code>交叉的地方叫做<code>block</code>,所以一个<code>block</code>可以由<code>section</code>和<code>track</code>来定位。每一个<code>block</code>的大小是一样的。</p>
+<a id="more"></a>
+<p>操作系统读取数据都是按照<code>block</code>为单位进行。</p>
+<p>在<code>block</code>内，数据的存储结构可以看成一个一维数组，大致结构是这样(假设一个<code>block</code>的<code>size</code>为<code>512byte</code>)</p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/Disk中一个block存储结构.jpg" alt=""></p>
+<p><code>Disk</code>的读写头可以旋转和伸缩来定位一个<code>block</code></p>
+<p>为了使磁盘中的数据可以被应用程序使用，必须先<code>copy</code>数据到随机读写存储器<code>RAM</code>中,而这正是耗时的操作。</p>
+<h2 id="磁盘如何存储数据库数据"><a href="#磁盘如何存储数据库数据" class="headerlink" title="磁盘如何存储数据库数据"></a>磁盘如何存储数据库数据</h2><p>假设现在有一个<code>Employee</code>表，其中有一些字段，如下所示，所以一行数据的大小是<code>128byte</code></p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/employee数据结构.png" alt=""></p>
+<p>假设总共有100行这样的数据</p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/employee在和磁盘的关系.png" alt=""></p>
+<p>所以每一个<code>block</code>可以存储4行这样的数据，这<code>100行</code>数据需要<code>25个block</code>,假设现在按照这样的方式来查询一条记录，最多需要查找<code>25个block</code>.</p>
+<p>那索引为什么可以减少查找的次数呢？</p>
+<h2 id="什么是索引"><a href="#什么是索引" class="headerlink" title="什么是索引"></a>什么是索引</h2><p>我们建一个简单的索引，有两个字段，一个<code>eid</code>，表示<code>employee</code>的<code>id</code>，还有一个字段<code>pointer</code>，指向数据存储在<code>disk</code>上的位置。<code>empolyee</code>中的每一行，在<code>index</code>上都有一条记录 </p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/简单的索引.png" alt=""></p>
+<p>当然我们也需要考虑如何存储这个索引表。如果索引存放在<code>disk</code>上，那么这个索引需要占据多少个<code>block</code>呢？<code>eid</code>大小为<code>10bytes</code>，<code>pointer</code>大小为<code>6bytes</code>，所以一行索引就有<code>16个bytes</code>大小。<code>100条</code>索引就需要占据<code>100 * 16 / 512</code>，也就是 <code>4个block</code> </p>
+<p>在现在的情况下，我们查找<code>employee</code>表中的一条数据，最多就只需要<code>4</code>次索引表查找和一次<code>employee</code>表读取,相比没有索引的情况效率提升了很多</p>
+<h2 id="多级索引"><a href="#多级索引" class="headerlink" title="多级索引"></a>多级索引</h2><p>如果现在把<code>employee</code>表中的数据行数增加到<code>1000行</code>，那么同理，数据表需要<code>250个block</code>,索引表需要<code>40个block</code>,现在查询一条记录就最多需要<code>41次block</code>的读取和拷贝(<code>IO</code>)</p>
+<p>根据建立索引可以减少查找次数的理论，我们现在可以建立二级索引，也就是对上面的一级索引再建立索引，二级索引存储<strong>一级索引</strong><code>所在的block</code>,现在一级索引占用<code>40个bloc</code>k,所以二级索引表有<code>40</code>条记录，每一个索引记录大小为<code>16byte</code>,所以二级索引占用的<code>block</code>为<code>40*16/512</code>,也就是<code>2个block</code>。那么现在再来根据二级索引查找到一级索引所在的<code>block</code>,再根据一级索引直接定位到<code>employee</code>表中的某条数据所在的<code>block</code>，最多一共需要<code>2+1+1=4</code>次查找(<code>IO</code>),相比之前效率又提升了不少。</p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/二级索引.png" alt=""></p>
+<p>随着数据表中数据记录的增加，可以建立三级，四级….索引来减少IO次数</p>
+<h2 id="多路-n-way-搜索树"><a href="#多路-n-way-搜索树" class="headerlink" title="多路(n-way)搜索树"></a>多路(n-way)搜索树</h2><h3 id="二叉搜索树"><a href="#二叉搜索树" class="headerlink" title="二叉搜索树"></a>二叉搜索树</h3><p>每个节点只有一个值，一个节点最多两个子节点，左子节点比父节点小，右子节点比父节点大</p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/BST二叉搜索树.png" alt=""></p>
+<p>一颗树代表了<code>某一级</code>索引，搜索树的高度(深度)代表了<code>最多IO</code>的次数，所以减少树的高度可以减少<code>IO</code>的次数</p>
+<p>思路就是一个节点存储多个值，相应的子节点最大个数也可以有多个</p>
+<h3 id="n-way搜索树"><a href="#n-way搜索树" class="headerlink" title="n-way搜索树"></a>n-way搜索树</h3><p>由二叉搜索树扩展，让每个节点最多可以存<code>n-1</code>个索引值，每个节点可以有<code>n</code>个子节点，就是<code>n-way</code>搜索树 </p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/多路搜索树.png" alt=""></p>
+<p>上面就是一个<code>3路</code>搜索树</p>
+<p>我们可以使用这样的数据结构来作为索引，但是<code>n-way</code>搜索树也存在一些问题</p>
+<p>比如现在有三个数据：10，20，30，要用一个<code>10-way</code>搜索树来构建。很有可能，最终会构建出一个这样的树 </p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/多路搜索树缺陷.png" alt=""></p>
+<p>这是一种最坏的情况，相当于退化成链表结构。</p>
+<h2 id="B树：多路搜索树上增加限制"><a href="#B树：多路搜索树上增加限制" class="headerlink" title="B树：多路搜索树上增加限制"></a>B树：多路搜索树上增加限制</h2><p>B树，实际上可以看作是<code>n-way</code>搜索树 + 规则（如何构建这棵树的规则） </p>
+<p>规则：</p>
+<ul>
+<li>每个节点至少有<code>[n/2]</code>个子节点</li>
+<li>根节点可以最少有<code>2</code>个子节点</li>
+<li>所有的叶子节点必须在一个层级</li>
+<li>创建过程是由下往上的</li>
+</ul>
+<p>值：<code>10，20，40，50</code>。要构建一个<code>4-way</code>搜索树。<code>4-way</code>搜索树，意味着一个节点最多可以有<code>3</code>个值。 </p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/4-way搜索树.png" alt=""></p>
+<p>继续插入操作，最后形成的结果是：</p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/4-way搜索树做索引图示.png" alt=""></p>
+<p>每一个节点可以有多个值，每个值里面包含一个键和位置指针，键用来作为标识，数据值标识数据存放的位置</p>
+<h2 id="B-树"><a href="#B-树" class="headerlink" title="B+树"></a>B+树</h2><p>在<code>B+</code>树中，不是每个值旁边都有一个指向数据存储位置的指针，只有叶子节点才有。非叶子节点的值，在叶子节点上有他的副本 </p>
+<p><img src="/2019/03/17/%E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/B+树索引.png" alt=""></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/" rel="tag"># 数据库索引</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019/03/15/HTTP%E7%BC%93%E5%AD%98%E5%B0%8F%E7%BB%93/" rel="prev" title="HTTP缓存小结">
+      <i class="fa fa-chevron-left"></i> HTTP缓存小结
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019/07/02/SpringSecurity%E5%88%9D%E6%8E%A2/" rel="next" title="SpringSecurity初探">
+      SpringSecurity初探 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#磁盘结构"><span class="nav-number">1.</span> <span class="nav-text">磁盘结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#磁盘如何存储数据库数据"><span class="nav-number">2.</span> <span class="nav-text">磁盘如何存储数据库数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是索引"><span class="nav-number">3.</span> <span class="nav-text">什么是索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多级索引"><span class="nav-number">4.</span> <span class="nav-text">多级索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多路-n-way-搜索树"><span class="nav-number">5.</span> <span class="nav-text">多路(n-way)搜索树</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#二叉搜索树"><span class="nav-number">5.1.</span> <span class="nav-text">二叉搜索树</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#n-way搜索树"><span class="nav-number">5.2.</span> <span class="nav-text">n-way搜索树</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#B树：多路搜索树上增加限制"><span class="nav-number">6.</span> <span class="nav-text">B树：多路搜索树上增加限制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#B-树"><span class="nav-number">7.</span> <span class="nav-text">B+树</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>

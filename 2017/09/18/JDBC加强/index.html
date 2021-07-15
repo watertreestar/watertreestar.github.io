@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一、使用PreparedStatement预编译语句防止SQL注入什么是SQL注入？所谓SQL注入，就是通过把SQL命令插入到Web表单提交或输入域名或页面请求的查询字符串，最终达到欺骗服务器执行恶意的SQL命令。 举个例子：假如我们登录时执行的SQL语句为：select *from user where username&#x3D;’USERNAME’ and password&#x3D;’PASSWORD’; 但">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JDBC加强">
+<meta property="og:url" content="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="一、使用PreparedStatement预编译语句防止SQL注入什么是SQL注入？所谓SQL注入，就是通过把SQL命令插入到Web表单提交或输入域名或页面请求的查询字符串，最终达到欺骗服务器执行恶意的SQL命令。 举个例子：假如我们登录时执行的SQL语句为：select *from user where username&#x3D;’USERNAME’ and password&#x3D;’PASSWORD’; 但">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/sql_inject.png">
+<meta property="og:image" content="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/prepstatement.png">
+<meta property="og:image" content="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/affaris_table.png">
+<meta property="article:published_time" content="2017-09-18T21:44:43.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:17.977Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="JDBC">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/sql_inject.png">
+
+<link rel="canonical" href="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>JDBC加强 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JDBC加强
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-09-18 21:44:43" itemprop="dateCreated datePublished" datetime="2017-09-18T21:44:43+00:00">2017-09-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:17" itemprop="dateModified" datetime="2021-07-15T16:43:17+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h3 id="一、使用PreparedStatement预编译语句防止SQL注入"><a href="#一、使用PreparedStatement预编译语句防止SQL注入" class="headerlink" title="一、使用PreparedStatement预编译语句防止SQL注入"></a>一、使用PreparedStatement预编译语句防止SQL注入</h3><h4 id="什么是SQL注入？"><a href="#什么是SQL注入？" class="headerlink" title="什么是SQL注入？"></a>什么是SQL注入？</h4><p>所谓SQL注入，就是通过把SQL命令插入到Web表单提交或输入域名或页面请求的查询字符串，最终达到欺骗服务器执行恶意的SQL命令。</p>
+<p>举个例子：假如我们登录时执行的SQL语句为：select *from user where username=’USERNAME’ and password=’PASSWORD’;</p>
+<p>但是我们可以把USERNAME填写为”tom’;– “,(注意–后有空格)，PASSWORD随便写(假设这里写123)，这样SQL语句就成了select *from user where username=’tom’;– ‘ and password=’123’;</p>
+<p>“– “后的内容就被注释掉，现在就算密码不正确也能查询到相应的结果。利用SQL注入可以实现数据的盗取</p>
+<a id="more"></a>
+<h4 id="在Java中使用PreparedStatement类防止SQL注入"><a href="#在Java中使用PreparedStatement类防止SQL注入" class="headerlink" title="在Java中使用PreparedStatement类防止SQL注入"></a>在Java中使用PreparedStatement类防止SQL注入</h4><p>防SQL注入的方法有很多，使用预编译语句是一种简单有效的方式</p>
+<p>下面介绍如何使用这种方式来操作数据库</p>
+<p>我已经在本地数据库mydb中创建了一个user表，并在表中插入数据</p>
+<p>现在我们使用字符串拼接的方式来构造一个SQL语句，并在mysql客户端执行此SQL语句，结果如下：<br><img src="/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/sql_inject.png" alt=""></p>
+<p>通过图中我们发现这种方式SQL注入成功</p>
+<p>下面使用预编译SQL语句的方式来执行此SQL语句</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"> String url = <span class="string">"jdbc:mysql://localhost:3306/mydb"</span>;</span><br><span class="line">	 String user = <span class="string">"root"</span>;</span><br><span class="line"> String password = <span class="string">"root"</span>;</span><br><span class="line">	 String username = <span class="string">"杜若' or 1=1; -- "</span>;  <span class="comment">//'-- ' 是sql中的注释符号(注意后面的空格)</span></span><br><span class="line"> String pwd = <span class="string">"000"</span>;</span><br><span class="line">Class.forName(<span class="string">"com.mysql.jdbc.Driver"</span>);</span><br><span class="line"></span><br><span class="line">Connection  connection  = DriverManager.getConnection(url,user,password);</span><br><span class="line"></span><br><span class="line"> <span class="comment">//构造sql语句</span></span><br><span class="line">String sql = <span class="string">"select *from user where username=? and pwd =?"</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">PreparedStatement pstmt = connection.prepareStatement(sql);</span><br><span class="line"></span><br><span class="line">pstmt.setString(<span class="number">1</span>, username);</span><br><span class="line">pstmt.setString(<span class="number">2</span>, pwd);</span><br><span class="line"></span><br><span class="line">ResultSet rs = pstmt.executeQuery();</span><br><span class="line"><span class="keyword">if</span>(rs.next())&#123;</span><br><span class="line">	<span class="keyword">do</span>&#123;</span><br><span class="line">		String username = rs.getString(<span class="number">2</span>);</span><br><span class="line">		String pwd = rs.getString(<span class="number">3</span>);</span><br><span class="line">		</span><br><span class="line">		System.out.println(username+<span class="string">":"</span>+pwd);</span><br><span class="line">	&#125;<span class="keyword">while</span>(rs.next());</span><br><span class="line">&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">	System.out.println(<span class="string">"未查到相应的结果"</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>(rs!=<span class="keyword">null</span>)&#123;</span><br><span class="line">	rs.close();</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span>(pstmt!=<span class="keyword">null</span>)&#123;</span><br><span class="line">	pstmt.close();</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span>(connection!=<span class="keyword">null</span>)&#123;</span><br><span class="line">	connection.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>测试运行之后的结果<br><img src="/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/prepstatement.png" alt=""></p>
+<p>这样已经达到了防SQL注入的目的</p>
+<p>那为什么它这样处理就能预防SQL注入提高安全性呢？其实是因为SQL语句在程序运行前已经进行了预编译，在程序运行时第一次操作数据库之前，SQL语句已经被数据库分析，编译和优化，对应的执行计划也会缓存下来并允许数据库已参数化的形式进行查询，当运行时动态地把参数传给PreprareStatement时，即使参数里有敏感字符如 or ‘1=1’也数据库会作为一个参数一个字段的属性值来处理而不会作为一个SQL指令</p>
+<h3 id="二，获取插入自增长值"><a href="#二，获取插入自增长值" class="headerlink" title="二，获取插入自增长值"></a>二，获取插入自增长值</h3><p>有时候在插入一条记录的时候，我们需要获取插入这条数据的自增长值，以便在其他地方使用</p>
+<p>直接上代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//获取插入自增长</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Demo1</span> </span>&#123;</span><br><span class="line">	<span class="keyword">private</span> String user=<span class="string">"root"</span>;</span><br><span class="line">	<span class="keyword">private</span> String password=<span class="string">"root"</span>;</span><br><span class="line">	<span class="keyword">private</span> String url=<span class="string">"jdbc:mysql://localhost:3306/mydb"</span>;</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Test</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test1</span><span class="params">()</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">		Class.forName(<span class="string">"com.mysql.jdbc.Driver"</span>);</span><br><span class="line">		Connection connection = DriverManager.getConnection(url, user, password);</span><br><span class="line">		String sql = <span class="string">"insert into user(username,pwd) values(?,?)"</span>;</span><br><span class="line">		<span class="comment">//第二个参数是Statement类中的一个常量，指示是否应该返回自动生成的键的标志</span></span><br><span class="line">		PreparedStatement pstmt = connection.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);</span><br><span class="line">		</span><br><span class="line">		pstmt.setString(<span class="number">1</span>, <span class="string">"mary"</span>);</span><br><span class="line">		pstmt.setString(<span class="number">2</span>, <span class="string">"123456"</span>);</span><br><span class="line">		</span><br><span class="line">		pstmt.executeUpdate();</span><br><span class="line">		</span><br><span class="line">		ResultSet rs = pstmt.getGeneratedKeys();</span><br><span class="line">		<span class="keyword">if</span>(rs.next())&#123;</span><br><span class="line">			<span class="keyword">int</span> key = rs.getInt(<span class="number">1</span>);</span><br><span class="line">			System.out.println(key);</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">if</span>(rs!=<span class="keyword">null</span>)&#123;</span><br><span class="line">			rs.close();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>(pstmt!=<span class="keyword">null</span>)&#123;</span><br><span class="line">			pstmt.close();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>(connection!=<span class="keyword">null</span>)&#123;</span><br><span class="line">			connection.close();</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="三，批处理执行"><a href="#三，批处理执行" class="headerlink" title="三，批处理执行"></a>三，批处理执行</h3><p>有时候需要向数据库发送一批SQL语句执行，这时应避免向数据库一条条的发送执行，而应采用JDBC的批处理机制，以提升执行效率。</p>
+<p>无论使用Statement对象还是使用PreparedStatement对象都可以实现</p>
+<p>这里介绍使用PreparedStatement来实现的方式</p>
+<ol>
+<li>获取PreparedStatement对象</li>
+<li>设置每条批处理的参数</li>
+<li>将一组参数添加到批处理命令中</li>
+</ol>
+<p>下面上实例代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Demo1</span> </span>&#123;</span><br><span class="line">	<span class="keyword">private</span> String user=<span class="string">"root"</span>;</span><br><span class="line">	<span class="keyword">private</span> String password=<span class="string">"root"</span>;</span><br><span class="line">	<span class="keyword">private</span> String url=<span class="string">"jdbc:mysql://localhost:3306/mydb"</span>;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Test</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test1</span><span class="params">()</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">		List&lt;User&gt; list = <span class="keyword">new</span> ArrayList&lt;User&gt;();</span><br><span class="line">		<span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>;i &lt; <span class="number">10</span>;i++)&#123;</span><br><span class="line">			User user = <span class="keyword">new</span> User();</span><br><span class="line">			user.setUsername(<span class="string">"albee"</span>+i);</span><br><span class="line">			user.setPwd(<span class="string">"123456"</span>);</span><br><span class="line">			list.add(user);</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		sava(list);</span><br><span class="line">		</span><br><span class="line">		</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">sava</span><span class="params">(List&lt;User&gt; l)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">		Class.forName(<span class="string">"com.mysql.jdbc.Driver"</span>);</span><br><span class="line">		</span><br><span class="line">		Connection connection = DriverManager.getConnection(url, user, password);</span><br><span class="line">		String sql = <span class="string">"insert into user(username,pwd) values(?,?)"</span>;</span><br><span class="line">		PreparedStatement pstmt = connection.prepareStatement(sql);</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>;i&lt;l.size();i++)&#123;</span><br><span class="line">			pstmt.setString(<span class="number">1</span>, l.get(i).getUsername());</span><br><span class="line">			pstmt.setString(<span class="number">2</span>, l.get(i).getPwd());</span><br><span class="line">			</span><br><span class="line">			pstmt.addBatch();</span><br><span class="line">			</span><br><span class="line">			<span class="comment">// 每到五条就执行一次对象集合中的批处理命令，</span></span><br><span class="line">			<span class="keyword">if</span>(i%<span class="number">5</span>==<span class="number">0</span>)&#123;        </span><br><span class="line">				pstmt.executeBatch();</span><br><span class="line">				pstmt.clearBatch();</span><br><span class="line">			&#125;	</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="comment">// 不足五条也要执行一次</span></span><br><span class="line">		pstmt.executeBatch();</span><br><span class="line">		pstmt.clearBatch();</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">if</span>(pstmt!=<span class="keyword">null</span>)&#123;</span><br><span class="line">			pstmt.close();</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>(connection!=<span class="keyword">null</span>)&#123;</span><br><span class="line">			connection.close();</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="四，事务的操作"><a href="#四，事务的操作" class="headerlink" title="四，事务的操作"></a>四，事务的操作</h3><p>有时候我们需要完成一组数据库操作，这其中的操作有一个失败则整个操作就回滚，即组成事务的每一个操作都执行成功整个事务才算成功执行</p>
+<p>常见的例子就是银行转帐业务</p>
+<blockquote>
+<p>update account set money=money-1000 where accountName=’张三’;</p>
+</blockquote>
+<blockquote>
+<p>update account set money=money+1000 where accountName=’李四’;</p>
+</blockquote>
+<p>已经在mydb中创建了account表，包含accountName和money字段，并插入了两条记录</p>
+<p>实例代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 使用事务</span></span><br><span class="line">	<span class="meta">@Test</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test2</span><span class="params">()</span></span>&#123;</span><br><span class="line">		String url = <span class="string">"jdbc:mysql://localhost:3306/mydb"</span>;</span><br><span class="line"> 	 	String user = <span class="string">"root"</span>;</span><br><span class="line">	 	String password = <span class="string">"root"</span>;</span><br><span class="line">		<span class="keyword">try</span> &#123;</span><br><span class="line">			Class.forName(<span class="string">"com.mysql.jdbc.Driver"</span>);</span><br><span class="line">			connection = DriverManager.getConnection(url,user,password);</span><br><span class="line">			connection.setAutoCommit(<span class="keyword">false</span>);  <span class="comment">//设置事务为手动提交  </span></span><br><span class="line">			String sql_zs = <span class="string">"update account set money=money-1000 where accountName='张三'"</span>;</span><br><span class="line">			String sql_ls = <span class="string">"update account set money=money+1000 where accountName='李四'"</span>;</span><br><span class="line">			</span><br><span class="line">			pstmt = connection.prepareStatement(sql_ls);</span><br><span class="line">			<span class="keyword">int</span> count_ls = pstmt.executeUpdate();</span><br><span class="line"></span><br><span class="line">			pstmt = connection.prepareStatement(sql_zs);</span><br><span class="line">			<span class="keyword">int</span> count_zs = pstmt.executeUpdate();</span><br><span class="line"></span><br><span class="line">			</span><br><span class="line">		&#125;<span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">			e.printStackTrace();</span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				connection.rollback();</span><br><span class="line">			&#125; <span class="keyword">catch</span> (Exception e2) &#123;</span><br><span class="line">				e2.printStackTrace();</span><br><span class="line">			&#125;</span><br><span class="line">		&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				connection.commit();</span><br><span class="line">			&#125; <span class="keyword">catch</span> (SQLException e1) &#123;</span><br><span class="line">				e1.printStackTrace();</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(pstmt!=<span class="keyword">null</span>)&#123;</span><br><span class="line">				<span class="keyword">try</span> &#123;</span><br><span class="line">					pstmt.close();</span><br><span class="line">				&#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">					e.printStackTrace();</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(connection!=<span class="keyword">null</span>)&#123;</span><br><span class="line">				<span class="keyword">try</span> &#123;</span><br><span class="line">					connection.close();</span><br><span class="line">				&#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">					e.printStackTrace();</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<p>如果事务执行成功</p>
+<p>执行前和执行后表的变动</p>
+<p><img src="/2017/09/18/JDBC%E5%8A%A0%E5%BC%BA/affaris_table.png" alt=""></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+              <a href="/tags/JDBC/" rel="tag"># JDBC</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017/09/12/JDBC%E5%9F%BA%E7%A1%80/" rel="prev" title="JDBC基础">
+      <i class="fa fa-chevron-left"></i> JDBC基础
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/07/05/SpringIOC/" rel="next" title="Spring IOC入门">
+      Spring IOC入门 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#一、使用PreparedStatement预编译语句防止SQL注入"><span class="nav-number">1.</span> <span class="nav-text">一、使用PreparedStatement预编译语句防止SQL注入</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#什么是SQL注入？"><span class="nav-number">1.1.</span> <span class="nav-text">什么是SQL注入？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#在Java中使用PreparedStatement类防止SQL注入"><span class="nav-number">1.2.</span> <span class="nav-text">在Java中使用PreparedStatement类防止SQL注入</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二，获取插入自增长值"><span class="nav-number">2.</span> <span class="nav-text">二，获取插入自增长值</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三，批处理执行"><span class="nav-number">3.</span> <span class="nav-text">三，批处理执行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#四，事务的操作"><span class="nav-number">4.</span> <span class="nav-text">四，事务的操作</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>

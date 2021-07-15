@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="汉诺塔问题汉诺塔问题的求解可以巧妙利用递归思想   以下摘自知乎上我认为阐述得很清除回答：  要用程序来解决这个问题，我们先定义一个移动函数：move（移动数，开始柱，中转柱，目标柱），例如 move（2，A，B，C） 表示将2个盘子从A柱（开始柱）借助B柱（中转柱）移动到C柱（目标柱）。关于开始柱，中转柱，目标柱这三个概念可以用移动过程中的某个状态来理解，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="递归理解-汉诺塔问题">
+<meta property="og:url" content="http://chenjungle.cn/2018/12/05/%E6%B1%89%E8%AF%BA%E5%A1%94%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="汉诺塔问题汉诺塔问题的求解可以巧妙利用递归思想   以下摘自知乎上我认为阐述得很清除回答：  要用程序来解决这个问题，我们先定义一个移动函数：move（移动数，开始柱，中转柱，目标柱），例如 move（2，A，B，C） 表示将2个盘子从A柱（开始柱）借助B柱（中转柱）移动到C柱（目标柱）。关于开始柱，中转柱，目标柱这三个概念可以用移动过程中的某个状态来理解，">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-12-05T21:48:15.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:18.049Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="算法，递归">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://chenjungle.cn/2018/12/05/%E6%B1%89%E8%AF%BA%E5%A1%94%E9%97%AE%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>递归理解-汉诺塔问题 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2018/12/05/%E6%B1%89%E8%AF%BA%E5%A1%94%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          递归理解-汉诺塔问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-12-05 21:48:15" itemprop="dateCreated datePublished" datetime="2018-12-05T21:48:15+00:00">2018-12-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:18" itemprop="dateModified" datetime="2021-07-15T16:43:18+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%AE%97%E6%B3%95/" itemprop="url" rel="index"><span itemprop="name">算法</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="汉诺塔问题"><a href="#汉诺塔问题" class="headerlink" title="汉诺塔问题"></a>汉诺塔问题</h1><p>汉诺塔问题的求解可以巧妙利用递归思想</p>
+<blockquote>
+<p> 以下摘自知乎上我认为阐述得很清除回答：</p>
+</blockquote>
+<p>要用程序来解决这个问题，我们先定义一个移动函数：move（移动数，开始柱，中转柱，目标柱），<br>例如 move（2，A，B，C） 表示将2个盘子从A柱（开始柱）借助B柱（中转柱）移动到C柱（目标柱）。<br>关于开始柱，中转柱，目标柱这三个概念可以用移动过程中的某个状态来理解，</p>
+<a id="more"></a>
+<p>看下面一张图应该就能明白：<br>有三种状态的柱子，开始柱，中间柱，目标住，开始柱指的是开始状态时存放所有盘子的柱子，中转柱指的是中间状态时暂时存放n-1个（三层就是3-1个）盘子的柱子，<br>目标柱指的是盘子最终要移动到的柱子。这里需要注意，开始柱，中转柱，目标柱并不是一成不变的，而是会根据层次的不同而改变。（如果这里暂时不能理解的话，先读下去，再回头你就能明白了）。</p>
+<p>接着我们分情况讨论一下盘子的移动：</p>
+<h2 id="情况一"><a href="#情况一" class="headerlink" title="情况一"></a>情况一</h2><blockquote>
+<p>当盘子只有1个（调用 move（1，A，B，C））当盘子只有一个的时候，</p>
+</blockquote>
+<ul>
+<li>只要直接将盘子从开始柱移动到目标柱就可以了，并没有中间状态（即不用借助中转柱），在move方法中可以用一句话表示该移动动作  print（’A—&gt;C’）;</li>
+</ul>
+<h2 id="情况二"><a href="#情况二" class="headerlink" title="情况二"></a>情况二</h2><blockquote>
+<p> 当盘子有2个（调用 move（2，A，B，C））这个情况分三个步骤进行：</p>
+</blockquote>
+<ul>
+<li>step1.  把除了最大的盘子之外的盘子从A移到BA—&gt;B  (开始柱—&gt;中转柱)   【相当于调用  move（1，A，C，B）】</li>
+<li>step2.  把最大的盘子从A移到CA—&gt;C  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，B，C）】</li>
+<li>step3.  把除了最大的盘子之外的盘子从B移到CB—&gt;C  (中转柱—&gt;目标柱)   【相当于调用  move（1，B，A，C）】我想对于以上两个情况大家应该是没有什么疑问的，是可以确定的。</li>
+</ul>
+<p>然后我们来看三层的情况</p>
+<h2 id="情况三"><a href="#情况三" class="headerlink" title="情况三"></a>情况三</h2><blockquote>
+<p> 当盘子有3个（调用 move（3，A，B，C））这个情况同样分三步进行：</p>
+</blockquote>
+<ul>
+<li>step1. 把除了最大的盘子之外的盘子从A移到B（注意对于这个步骤来说此时A为开始柱，C为中转柱，B为目标柱，这样才能完成把最上面的2个盘子从A—&gt;B的任务）A—&gt;C  (开始柱—&gt;中转柱)   【相当于调用  move（1，A，B，C）】A—&gt;B  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，C，B）】C—&gt;B  (中转柱—&gt;目标柱)   【相当于调用  move（1，C，A，B）】</li>
+<li>step2.  把最大的盘子从A移到C（对于这个步骤来说此时A为开始柱，B为中转柱，C为目标柱，这样才能把最大的盘子从A—&gt;C）A—&gt;C  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，B，C），即直接执行 print（’A—&gt;C’）】</li>
+<li>step3.  把除了最大的盘子之外的盘子从B移到C（注意对于这个步骤来说此时B为开始柱，A为中转柱，C为目标柱，这样才能完成把处于step2中的中转柱的2个盘子从B—&gt;C的任务）B —&gt; A  (开始柱—&gt;中转柱)   【相当于调用  move（1，B，C，A）】B —&gt; C  (开始柱—&gt;目标柱)   【相当于调用  move（1，B，A，C）】A —&gt; C  (中转柱—&gt;目标柱)   【相当于调用  move（1，A，B，C）】</li>
+</ul>
+<p>情况三的描述可能一下子不是那么好理解，但是大家应该能发现情况三的step1和step3的形式和整整个情况二的形式很像吧？而且要注意到分析的层次不相同时，开始柱，中转柱，目标柱是不一样的。</p>
+<p>对于step1来说中转柱是C，对于step3来说中转柱是A，对于整个情况三来说中转柱是B。</p>
+<p>前面我们已经确定了情况二调用的函数是 move（2，A，B，C），其等价于A—&gt;B A—&gt;CB—&gt;C这三步，然情况三的step1是A—&gt;C  A—&gt;B  C—&gt;B  这三步，跟情况二的形式是一样的，根据前面情况二的转化，那这三步就可以转化成函数 move（2，A，C，B)情况三的step3同理，做转化就成了函数 move（2，B，A，C）<br>而情况三的step2可以直接用一句  print（’A—&gt;C’） 来代替  move（1，A，B，C）所以整个情况三就可以这样来表示：</p>
+<ol>
+<li>move（2，A，C，B)  //step1. </li>
+<li>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </li>
+<li>把最大的盘子从A移到Cmove（2，B，A，C）  //step3.  </li>
+<li>把除了最大的盘子之外的盘子从B移到C我们又知道情况三调用的函数是  move（3，A，B，C），</li>
+</ol>
+<p>所以以上三行代码其实就等价于函数  move（3，A，B，C）。</p>
+<p>来到这里应该就可以发现一点端倪了，情况四（4层）调用的函数是 move（4，A，B，C），</p>
+<ol>
+<li>其用伪代码表示就是move（3，A，C，B)  //step1. </li>
+<li>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </li>
+<li>把最大的盘子从A移到Cmove（3，B，A，C）  //step3.  </li>
+<li>把除了最大的盘子之外的盘子从B移到C</li>
+</ol>
+<p>对此有怀疑的小伙伴可以自己写出情况四的每步具体步骤然后再做转化，限于篇幅这里不再列出。</p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>那其实可以总结出：对于n（n&gt;1）层汉诺塔，调用函数 move（n，A，B，C）来递归解决该问题，该函数执行的是</p>
+<ol>
+<li><p>move（n-1，A，C，B)  //step1. </p>
+</li>
+<li><p>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </p>
+</li>
+<li><p>把最大的盘子从A移到Cmove（n-1，B，A，C）  //step3.  </p>
+</li>
+<li><p>把除了最大的盘子之外的盘子从B移到C</p>
+</li>
+</ol>
+<h2 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h2><p>然后有了以上的理解之后，我们就可以尝试写出解决该问题的代码了，Python实现：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">move</span><span class="params">(n,A,B,C)</span>:</span></span><br><span class="line">    <span class="keyword">if</span> n==<span class="number">1</span>:             <span class="comment"># 1个盘子，直接打印出移动动作</span></span><br><span class="line">        print(A,<span class="string">'---&gt;'</span>,C)</span><br><span class="line">    <span class="keyword">else</span>:                <span class="comment"># n &gt; 1时，用抽象出的3步来移动</span></span><br><span class="line">        move（n<span class="number">-1</span>，A，C，B) <span class="comment">#step1.  把除了最大的盘子之外的盘子从A移到B</span></span><br><span class="line">        print(A,<span class="string">'---&gt;'</span>,C)  <span class="comment">#step2.  把最大的盘子从A移到C</span></span><br><span class="line">        move（n<span class="number">-1</span>，B，A，C）<span class="comment">#step3.  把除了最大的盘子之外的盘子从B移到C</span></span><br></pre></td></tr></table></figure>
+<p>so，读到这里，我大胆猜测大部分人心里应该明白得七七八八了</p>
+<p>这里给出Java代码的实现</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Hanoi</span> </span>&#123;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">move</span><span class="params">(<span class="keyword">int</span> n,<span class="keyword">char</span> A,<span class="keyword">char</span> B,<span class="keyword">char</span> C)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 如果是移动过一个盘子</span></span><br><span class="line">		<span class="keyword">if</span>(n == <span class="number">1</span>) &#123;</span><br><span class="line">			System.out.println(A+<span class="string">"--&gt;"</span>+C);</span><br><span class="line">			<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">		&#125;<span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// 一个以上的盘子</span></span><br><span class="line">			<span class="keyword">int</span> r1 = move(n-<span class="number">1</span>,A,C,B);</span><br><span class="line">			System.out.println(A+<span class="string">"--&gt;"</span>+C);</span><br><span class="line">			<span class="keyword">int</span> r2 = move(n-<span class="number">1</span>,B,A,C);</span><br><span class="line">			<span class="keyword">return</span> r1+r2+<span class="number">1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">int</span> count = <span class="number">6</span>;</span><br><span class="line">		<span class="keyword">int</span> result = Hanoi.move(count, <span class="string">'A'</span>, <span class="string">'B'</span>,<span class="string">'C'</span>);</span><br><span class="line">		System.out.println(<span class="string">"total numbers of moves:"</span>+result);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%AE%97%E6%B3%95%EF%BC%8C%E9%80%92%E5%BD%92/" rel="tag"># 算法，递归</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/11/30/DelayQueue%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97/" rel="prev" title="DelayQueue延迟队列">
+      <i class="fa fa-chevron-left"></i> DelayQueue延迟队列
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/12/12/CopyOnWriteList/" rel="next" title="CopyOnWriteList揭秘">
+      CopyOnWriteList揭秘 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#汉诺塔问题"><span class="nav-number">1.</span> <span class="nav-text">汉诺塔问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#情况一"><span class="nav-number">1.1.</span> <span class="nav-text">情况一</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#情况二"><span class="nav-number">1.2.</span> <span class="nav-text">情况二</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#情况三"><span class="nav-number">1.3.</span> <span class="nav-text">情况三</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#结论"><span class="nav-number">1.4.</span> <span class="nav-text">结论</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码"><span class="nav-number">1.5.</span> <span class="nav-text">代码</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>

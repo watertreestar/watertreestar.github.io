@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png">
+  <link rel="mask-icon" href="/images/favicon.png" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenjungle.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":"flat"},"back2top":{"enable":true,"sidebar":true,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"","post_header":"","post_body":"","coll_header":"","sidebar":""}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="1. 事务基本概述事务的特性逻辑上的一组操作-，组成这组事务的各个单元，要么全部成功，要么全部失败 事务的特性（ACID）  原子性：事务不可分割 一致性：事务执行前后数据完整性保证一致 隔离性：一个事务不能干扰其它事务 持久性：事务一旦成功，数据就持久化到数据库">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring 事务管理">
+<meta property="og:url" content="http://chenjungle.cn/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/index.html">
+<meta property="og:site_name" content="幸遥&#39;s blog">
+<meta property="og:description" content="1. 事务基本概述事务的特性逻辑上的一组操作-，组成这组事务的各个单元，要么全部成功，要么全部失败 事务的特性（ACID）  原子性：事务不可分割 一致性：事务执行前后数据完整性保证一致 隔离性：一个事务不能干扰其它事务 持久性：事务一旦成功，数据就持久化到数据库">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenjungle.cn/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/%E5%A3%B0%E6%98%8E%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AF%BC%E5%8C%85%E7%9A%84jar%E5%8C%85.png">
+<meta property="article:published_time" content="2018-07-07T20:05:03.000Z">
+<meta property="article:modified_time" content="2021-07-15T16:43:17.993Z">
+<meta property="article:author" content="Xingyao">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="Spring">
+<meta property="article:tag" content="事务">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenjungle.cn/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/%E5%A3%B0%E6%98%8E%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AF%BC%E5%8C%85%E7%9A%84jar%E5%8C%85.png">
+
+<link rel="canonical" href="http://chenjungle.cn/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Spring 事务管理 | 幸遥's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Noto Sans SC:300,300italic,400,400italic,700,700italic|Fira Code:300,300italic,400,400italic,700,700italic&amp;display=swap&amp;subset=latin,latin-ext">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">幸遥's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">Java,分布式,大数据</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-series">
+
+    <a href="/series/" rel="section"><i class="fa fa-bars fa-fw"></i>专题</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenjungle.cn/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avator.jpg">
+      <meta itemprop="name" content="Xingyao">
+      <meta itemprop="description" content="A simple blog, code repository, coding record">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="幸遥's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Spring 事务管理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-07-07 20:05:03" itemprop="dateCreated datePublished" datetime="2018-07-07T20:05:03+00:00">2018-07-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-15 16:43:17" itemprop="dateModified" datetime="2021-07-15T16:43:17+00:00">2021-07-15</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%A1%86%E6%9E%B6/" itemprop="url" rel="index"><span itemprop="name">框架</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h4 id="1-事务基本概述"><a href="#1-事务基本概述" class="headerlink" title="1. 事务基本概述"></a>1. 事务基本概述</h4><h5 id="事务的特性"><a href="#事务的特性" class="headerlink" title="事务的特性"></a>事务的特性</h5><p>逻辑上的一组操作-，组成这组事务的各个单元，要么全部成功，要么全部失败</p>
+<p>事务的特性（ACID）</p>
+<ul>
+<li>原子性：事务不可分割</li>
+<li>一致性：事务执行前后数据完整性保证一致</li>
+<li>隔离性：一个事务不能干扰其它事务</li>
+<li>持久性：事务一旦成功，数据就持久化到数据库</li>
+</ul>
+<a id="more"></a>
+<h5 id="不考虑隔离性（使用锁）引发的问题"><a href="#不考虑隔离性（使用锁）引发的问题" class="headerlink" title="不考虑隔离性（使用锁）引发的问题"></a>不考虑隔离性（使用锁）引发的问题</h5><p>事务的并发引发的问题</p>
+<ul>
+<li>读问题<ul>
+<li>脏读：一个事务读取另一个事务未提交的数据</li>
+<li>不可重复读：一个事务读取到另一个事务update的数据，导致两次读取的结果不一致</li>
+<li>虚读：一个事务读取到另一个事务insert或者delete的数据，导致两次读取的结果不一致</li>
+</ul>
+</li>
+<li>写问题：丢失更新</li>
+</ul>
+<h5 id="不同的锁引发不同类型的事务（事务隔离级别）"><a href="#不同的锁引发不同类型的事务（事务隔离级别）" class="headerlink" title="不同的锁引发不同类型的事务（事务隔离级别）"></a>不同的锁引发不同类型的事务（事务隔离级别）</h5><ol>
+<li>不支持事务</li>
+<li>read_uncommitted   未提交读，<strong>不能解决任何读问题</strong></li>
+<li>read_committed     已提交读  ，不能读取未提交的事务，<strong>能够解决脏读</strong></li>
+<li>repeateable_read    可重复读  ，能够保证两次读取的数据是一致的，<strong>能解决脏读和不可重复读</strong></li>
+<li>serializable      可序列化  ，事务的最高级别，<strong>可以解决脏读、不可重复读和虚读</strong></li>
+</ol>
+<h4 id="2-Spring事务管理API"><a href="#2-Spring事务管理API" class="headerlink" title="2. Spring事务管理API"></a>2. Spring事务管理API</h4><h5 id="1-平台事务管理器PlateformTransactionManager"><a href="#1-平台事务管理器PlateformTransactionManager" class="headerlink" title="1. 平台事务管理器PlateformTransactionManager"></a>1. 平台事务管理器<code>PlateformTransactionManager</code></h5><p><code>PlateformTransactionManager</code>是一个接口</p>
+<ul>
+<li>DataSourceTransactionManager:使用JDBC管理事务</li>
+<li>HibernateTransactionManager:使用Hibernate管理事务</li>
+</ul>
+<h5 id="2-事务定义信息TransactionDefinition"><a href="#2-事务定义信息TransactionDefinition" class="headerlink" title="2. 事务定义信息TransactionDefinition"></a>2. 事务定义信息<code>TransactionDefinition</code></h5><ul>
+<li>事务定义：用于定义事务的相关信息：隔离级别，传播信息，超时信息，是否只读</li>
+</ul>
+<h5 id="3-事务状态TransactionStatus"><a href="#3-事务状态TransactionStatus" class="headerlink" title="3. 事务状态TransactionStatus"></a>3. 事务状态<code>TransactionStatus</code></h5><p>用于记录事务在执行过程中，事务的状态的对象</p>
+<h5 id="4-关系"><a href="#4-关系" class="headerlink" title="4. 关系"></a>4. 关系</h5><p><code>事务管理器</code>更具<code>事务定义</code>来管理事务，在管理过程中产生<code>事务状态</code></p>
+<h4 id="3-Spring事务的传播行为"><a href="#3-Spring事务的传播行为" class="headerlink" title="3. Spring事务的传播行为"></a>3. Spring事务的传播行为</h4><p>事务的传播行为主要用来解决业务层方法相互调用的问题</p>
+<p>Spring提供了七中的事务传播行为</p>
+<ul>
+<li><p>保证多个操作在同一个事务中</p>
+<ul>
+<li><p><strong>PROPAGATION_REQUIRED</strong>:默认值，如果A中有事务，则使用A中的事务，如果没有事务则创建一个事务</p>
+</li>
+<li><p>PROPAGATION_SUPPORTS   如果A中有事务，则使用A中的事务，如果没有则不使用事务</p>
+</li>
+<li><p>PROPAGATION_MANDATORY  如果A中有事务，则使用A中的事务，如果没有，则报异常</p>
+</li>
+</ul>
+</li>
+<li><p>保证多个操作在不同事务中</p>
+<ul>
+<li><p><strong>PROPAGATION_REQUIRES_NEW</strong>：默认值，如果A中有事务，将A中 的事务挂起，创建新的事务，只包含自身操作，如果A中没有事务，则创建新事务包含自身操作</p>
+</li>
+<li><p>PROPAGATION_NOT_SUPPORTE    如果A中有事务，将A的事务挂起，不使用事务</p>
+</li>
+<li><p>PROPAGATION_NEVER   如果A中有事务，报异常</p>
+</li>
+<li><p>​</p>
+</li>
+</ul>
+</li>
+<li><p>嵌套式事务</p>
+<ul>
+<li>​</li>
+</ul>
+</li>
+</ul>
+<h4 id="4-编程式事务"><a href="#4-编程式事务" class="headerlink" title="4. 编程式事务"></a>4. 编程式事务</h4><h5 id="1-配置平台事务管理器"><a href="#1-配置平台事务管理器" class="headerlink" title="1. 配置平台事务管理器"></a>1. 配置平台事务管理器</h5><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置事务管理器 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"transactionManager"</span> <span class="attr">class</span>=<span class="string">"org.springframework.jdbc.datasource.DataSourceTransactionManager"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"dataSource"</span> <span class="attr">ref</span>=<span class="string">"dataSource"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h5 id="2-配置事务模板"><a href="#2-配置事务模板" class="headerlink" title="2. 配置事务模板"></a>2. 配置事务模板</h5><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置事务管理模板，简化事务控制 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"transactionTemplate"</span> <span class="attr">class</span>=<span class="string">"org.springframework.transaction.support.TransactionTemplate"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"transactionManager"</span> <span class="attr">ref</span>=<span class="string">"transactionManager"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h5 id="3-注入业务层"><a href="#3-注入业务层" class="headerlink" title="3. 注入业务层"></a>3. 注入业务层</h5><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置AccountService --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"accountService"</span> <span class="attr">class</span>=<span class="string">"com.ranger.spring.tx.service.impl.AccountServiceImpl"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"accountDao"</span> <span class="attr">ref</span>=<span class="string">"accountDao"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"transactionTemplate"</span> <span class="attr">ref</span>=<span class="string">"transactionTemplate"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<h5 id="4-使用事务模板开启事务"><a href="#4-使用事务模板开启事务" class="headerlink" title="4. 使用事务模板开启事务"></a>4. 使用事务模板开启事务</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transfer</span><span class="params">(Integer from, Integer to, <span class="keyword">double</span> money)</span> </span>&#123;</span><br><span class="line">    transactionTemplate.execute(<span class="keyword">new</span> TransactionCallbackWithoutResult() &#123;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doInTransactionWithoutResult</span><span class="params">(TransactionStatus arg0)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">            accountDao.increaseMoney(to, money);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 开启 / 关闭 异常</span></span><br><span class="line">            <span class="keyword">int</span> i = <span class="number">1</span>/<span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">            accountDao.decreaseMoney(from, money);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="5-声明式事务管理（常用）通过配置实现-使用AOP"><a href="#5-声明式事务管理（常用）通过配置实现-使用AOP" class="headerlink" title="5. 声明式事务管理（常用）通过配置实现  使用AOP"></a>5. 声明式事务管理（常用）通过配置实现  使用AOP</h4><h5 id="1-XML配置使用声明式事务管理"><a href="#1-XML配置使用声明式事务管理" class="headerlink" title="1. XML配置使用声明式事务管理"></a>1. XML配置使用声明式事务管理</h5><blockquote>
+<p> 不必再业务层添加事务管理代码</p>
+</blockquote>
+<ol>
+<li><p>导入AOP相关的包</p>
+<p><img src="/2018/07/07/Spring%E4%BA%8B%E5%8A%A1%E7%AE%A1%E7%90%86/声明式事务导包的jar包.png" alt=""></p>
+</li>
+</ol>
+<ol start="2">
+<li><p>配置事务管理器</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置事务管理器 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"transactionManager"</span> <span class="attr">class</span>=<span class="string">"org.springframework.jdbc.datasource.DataSourceTransactionManager"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"dataSource"</span> <span class="attr">ref</span>=<span class="string">"dataSource"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>配置事务管理通知</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置通知（增强） --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">tx:advice</span> <span class="attr">id</span>=<span class="string">"txAdvice"</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span> &gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line">        <span class="comment">&lt;!-- &lt;tx:method name="save*" propagation="REQUIRED" isolation="DEFAULT"/&gt;</span></span><br><span class="line"><span class="comment">    &lt;tx:method name="update*" propagation="REQUIRED" isolation="DEFAULT"/&gt;</span></span><br><span class="line"><span class="comment">    &lt;tx:method name="delete*" propagation="REQUIRED" isolation="DEFAULT"/&gt;</span></span><br><span class="line"><span class="comment">    &lt;tx:method name="find*" read-only="true"/&gt; --&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">tx:method</span> <span class="attr">name</span>=<span class="string">"*"</span> <span class="attr">propagation</span>=<span class="string">"REQUIRED"</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">tx:attributes</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">tx:advice</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>织入</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 织入（完成对目标对象的代理） --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">aop:config</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">aop:pointcut</span> <span class="attr">expression</span>=<span class="string">"execution(* com.ranger.spring.tx.service.impl.AccountServiceImpl.transfer(..))"</span> <span class="attr">id</span>=<span class="string">"transferPointCut"</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">aop:advisor</span> <span class="attr">advice-ref</span>=<span class="string">"txAdvice"</span> <span class="attr">pointcut-ref</span>=<span class="string">"transferPointCut"</span>/&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;/<span class="name">aop:config</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>​</p>
+</li>
+</ol>
+<h5 id="2-注解使用声明式事务"><a href="#2-注解使用声明式事务" class="headerlink" title="2. 注解使用声明式事务"></a>2. 注解使用声明式事务</h5><blockquote>
+<p>只需配置相应bean 和开启注解，配置注解</p>
+</blockquote>
+<ol>
+<li><p>配置事务管理器</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 配置事务管理器 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">bean</span> <span class="attr">name</span>=<span class="string">"transactionManager"</span> <span class="attr">class</span>=<span class="string">"org.springframework.jdbc.datasource.DataSourceTransactionManager"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span> <span class="attr">name</span>=<span class="string">"dataSource"</span> <span class="attr">ref</span>=<span class="string">"dataSource"</span>&gt;</span><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">bean</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>​</p>
+</li>
+<li><p>配置文件中开启事务注解、</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- 开启事务注解 --&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">tx:annotation-driven</span> <span class="attr">transaction-manager</span>=<span class="string">"transactionManager"</span>/&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>类上配置注解</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">@Transactional</span>(isolation=Isolation.DEFAULT)   </span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AccountServiceImpl</span> <span class="keyword">implements</span> <span class="title">AccountService</span> </span>&#123;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">private</span> AccountDao accountDao;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">private</span> TransactionTemplate transactionTemplate;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setAccountDao</span><span class="params">(AccountDao accountDao)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">this</span>.accountDao = accountDao;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setTransactionTemplate</span><span class="params">(TransactionTemplate transactionTemplate)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">this</span>.transactionTemplate = transactionTemplate;</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">transfer</span><span class="params">(Integer from, Integer to, <span class="keyword">double</span> money)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        accountDao.increaseMoney(to, money);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 开启 / 关闭 异常</span></span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">1</span>/<span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        accountDao.decreaseMoney(from, money);</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Java/" rel="tag"># Java</a>
+              <a href="/tags/Spring/" rel="tag"># Spring</a>
+              <a href="/tags/%E4%BA%8B%E5%8A%A1/" rel="tag"># 事务</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018/07/07/SpringJDBC/" rel="prev" title="Spring JDBC入门">
+      <i class="fa fa-chevron-left"></i> Spring JDBC入门
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018/07/12/MyBatis/" rel="next" title="MyBatis入门">
+      MyBatis入门 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-事务基本概述"><span class="nav-number">1.</span> <span class="nav-text">1. 事务基本概述</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#事务的特性"><span class="nav-number">1.1.</span> <span class="nav-text">事务的特性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#不考虑隔离性（使用锁）引发的问题"><span class="nav-number">1.2.</span> <span class="nav-text">不考虑隔离性（使用锁）引发的问题</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#不同的锁引发不同类型的事务（事务隔离级别）"><span class="nav-number">1.3.</span> <span class="nav-text">不同的锁引发不同类型的事务（事务隔离级别）</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-Spring事务管理API"><span class="nav-number">2.</span> <span class="nav-text">2. Spring事务管理API</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-平台事务管理器PlateformTransactionManager"><span class="nav-number">2.1.</span> <span class="nav-text">1. 平台事务管理器PlateformTransactionManager</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-事务定义信息TransactionDefinition"><span class="nav-number">2.2.</span> <span class="nav-text">2. 事务定义信息TransactionDefinition</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-事务状态TransactionStatus"><span class="nav-number">2.3.</span> <span class="nav-text">3. 事务状态TransactionStatus</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-关系"><span class="nav-number">2.4.</span> <span class="nav-text">4. 关系</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-Spring事务的传播行为"><span class="nav-number">3.</span> <span class="nav-text">3. Spring事务的传播行为</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-编程式事务"><span class="nav-number">4.</span> <span class="nav-text">4. 编程式事务</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-配置平台事务管理器"><span class="nav-number">4.1.</span> <span class="nav-text">1. 配置平台事务管理器</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-配置事务模板"><span class="nav-number">4.2.</span> <span class="nav-text">2. 配置事务模板</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-注入业务层"><span class="nav-number">4.3.</span> <span class="nav-text">3. 注入业务层</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#4-使用事务模板开启事务"><span class="nav-number">4.4.</span> <span class="nav-text">4. 使用事务模板开启事务</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-声明式事务管理（常用）通过配置实现-使用AOP"><span class="nav-number">5.</span> <span class="nav-text">5. 声明式事务管理（常用）通过配置实现  使用AOP</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-XML配置使用声明式事务管理"><span class="nav-number">5.1.</span> <span class="nav-text">1. XML配置使用声明式事务管理</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#2-注解使用声明式事务"><span class="nav-number">5.2.</span> <span class="nav-text">2. 注解使用声明式事务</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Xingyao"
+      src="/images/avator.jpg">
+  <p class="site-author-name" itemprop="name">Xingyao</p>
+  <div class="site-description" itemprop="description">A simple blog, code repository, coding record</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">48</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">41</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/watertreestar" title="GitHub → https://github.com/watertreestar" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:watertreestar@gmail.com" title="E-Mail → mailto:watertreestar@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+        <div class="back-to-top motion-element">
+          <i class="fa fa-arrow-up"></i>
+          <span>0%</span>
+        </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Xingyao</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">204k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">3:05</span>
+</div>
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  <script>
+  (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      if (curProtocol === 'https') {
+          bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+      }
+      else {
+          bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+      }
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+
+
+</body>
+</html>
