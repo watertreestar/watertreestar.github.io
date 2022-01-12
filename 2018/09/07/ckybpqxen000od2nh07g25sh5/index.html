@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      跨终端Web 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">跨终端Web</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2018-09-07 17:43:45
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/web/" title="web">
+                    <b>#</b> web
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h3 id="一、跨终端web"><a href="#一、跨终端web" class="headerlink" title="一、跨终端web"></a>一、跨终端web</h3><p>一提到跨终端，第一反应往往就是响应式布局。这至少说明两点：首先，响应式本身与跨终端之间有着某种本质的联系；其次，人们误以为跨终端和响应式是同一件事。“跨终端 Web”是最终希望达到的目的，而达到这个目的的手段有很多，响应式仅仅是其中的一种方式而已。这些方式至少包括：</p>
+<ul>
+<li>响应式</li>
+<li>多站点</li>
+<li>多模板</li>
+<li>多平台</li>
+</ul>
+<a id="more"></a>
+<h4 id="1、响应式-单域"><a href="#1、响应式-单域" class="headerlink" title="1、响应式(单域)"></a>1、响应式(单域)</h4><p><strong>缺点：</strong></p>
+<ul>
+<li><strong>DOM冗余，javascript冗余</strong>：对于DOM结构异常庞大复杂的页面而言，响应式不能解决移动端DOM冗余的问题，JavaScript 脚本冗余也是一个问题；</li>
+<li><strong>耦合度高</strong>：从工程实践来看，单个复杂响应式页面的维护成本并不比单独维护多个版本的页面成本低，并且由于响应式存在的内在耦合性，这个维护成本在复杂页面频繁更新时反而更高。</li>
+<li><strong>超出css可控制范围</strong>：响应式本质上是依靠 CSS 处理展现层面的差异，大部分项目的移动端和 PC 端存在着不仅仅是展示上的差异，在交互形式上的巨大差异也会导致 DOM 结构上的差异，这种差异已经远远超出 CSS 所能控制的范围。</li>
+</ul>
+<h4 id="2、多站点-单域"><a href="#2、多站点-单域" class="headerlink" title="2、多站点(单域)"></a>2、多站点(单域)</h4><p><strong>缺点：</strong></p>
+<p>通常一个网站要适配几个版本，针对手机、IPAD、小屏笔记本、大屏台式机，仅仅首页就要适配多个站点，整站下来维护成本太高。</p>
+<h4 id="3、多模板-多域"><a href="#3、多模板-多域" class="headerlink" title="3、多模板(多域)"></a>3、多模板(多域)</h4><blockquote>
+<p>多模板是响应式和多站点相结合的一种方案。</p>
+</blockquote>
+<p>多模板的优点在于一个页面只有一个 URL，无须服务器端复杂的 URL 映射规则和终端检测等手段进行跳转。虽然解决了响应式中 DOM 冗余的问题，但是由于单个页面存在多套模板，还需要在模板动态加载和首次服务器渲染等环节进行优化。</p>
+<h4 id="4、多平台"><a href="#4、多平台" class="headerlink" title="4、多平台"></a>4、多平台</h4><p>Native App 的确也是实现跨终端 Web 的一种途径</p>
+<p><strong>优点：</strong></p>
+<ul>
+<li>更好的性能、</li>
+<li>更丰富的系统级功能的调用、</li>
+<li>标准的发布渠道（通常是应用商店）</li>
+</ul>
+<p><strong>缺点：</strong></p>
+<ul>
+<li>发布成本高</li>
+<li>开发成本高</li>
+<li>潜在的风险：如：ios严重依赖app store</li>
+</ul>
+<h3 id="二、Mobile-Web"><a href="#二、Mobile-Web" class="headerlink" title="二、Mobile Web"></a>二、Mobile Web</h3><p>html5有几大特性，虽然表面看上去只是一个版本的html，但其实我们通常意义上所说的html ~= html5 + css3 + javascript</p>
+<h4 id="1、html5特点"><a href="#1、html5特点" class="headerlink" title="1、html5特点"></a>1、html5特点</h4><ul>
+<li>语意化：新增了一系列的语意化标签，更利于网页的seo优化等等</li>
+<li>离线存储：包括local storage等</li>
+<li>设备访问：如定位信息、移动设备传感器等</li>
+<li>多媒体：增加video、audio标签，提供原生的视频、音频访问</li>
+<li>图形接口：增加canvas 标签</li>
+<li>性能&amp;优化：</li>
+<li>css3：</li>
+</ul>
+<h4 id="2、针对移动web的页面模板"><a href="#2、针对移动web的页面模板" class="headerlink" title="2、针对移动web的页面模板"></a>2、针对移动web的页面模板</h4><p>针对移动web页面，html5增加了一系列的 meta 标签，在上一篇文章中做过详细介绍，这里就不在赘述了，<a href="http://iqianduan.net/blog/mobile_web_html5_head" target="_blank" rel="noopener">传送门：移动前端的html5头标签head</a></p>
+<h4 id="3、触屏事件"><a href="#3、触屏事件" class="headerlink" title="3、触屏事件"></a>3、触屏事件</h4><p>touch 以及 基于touch 的各种事件，drag（拖拽）、hold（长按）、pinch（捏）、rotate（旋转）、shake（重力感应等）</p>
+<table>
+<thead>
+<tr>
+<th>事件类别</th>
+<th>事件描述</th>
+<th>简称</th>
+<th>别称</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tap</td>
+<td>移动平台默认浏览器的click事件有300ms+的延时,通常使用touch事件模拟, 为区别点击称为拍击:. tap拍击 . doubletap 双击. hold 长按. tapn n(2,3..)指拍击</td>
+<td>拍击</td>
+<td>. android: touch. hold称呼较多: . android/ios: long press.wp: tap and hold. 也有称为press</td>
+</tr>
+<tr>
+<td>swipe</td>
+<td>按方向细分为:. swipe 单指滑动. swipeleft 单指向左滑动. swiperight 单指向右滑动. swipeup 单指向上滑动. swipedown 单指向下滑动. swipen n(2,3..)指滑动</td>
+<td>滑动</td>
+<td>wp: flick</td>
+</tr>
+<tr>
+<td>drag</td>
+<td>. drag 拖拽. dragstart 拖拽开始. dragend 拖拽结束. dragup 向上拖拽. dragdown 向下拖拽. dragleft 向左拖拽. dragright 向右拖拽</td>
+<td>拖拽</td>
+<td>ios/wp: pan</td>
+</tr>
+<tr>
+<td>pinch</td>
+<td>常用于放大(zoom in)缩小(zoom out)视图:. pinchin 双指捏合. pinchout 双指展开. squeeze 五指捏合. splay 五指展开</td>
+<td>捏</td>
+<td>. android: pinch open/close. pinchout也有称为spread</td>
+</tr>
+<tr>
+<td>rotate</td>
+<td>常用于旋转视图 . rotatecw 顺时针旋转. rotateccw 逆时针旋转</td>
+<td>旋转</td>
+<td></td>
+</tr>
+<tr>
+<td>shake</td>
+<td>常用于游戏中控制方向, 细分为:. shake 移动设备. shakeup 向上移动设备. shakedown 向下移动设备. shakeleft 向左移动设备. shakeright 向右移动设备. shakeforward 向前移动设备. shakeback 向后移动设备. shakeleftright 左右移动设备. shakeforwardback 前后移动设备. shakeupdown 上下移动设备</td>
+<td>重力感应</td>
+</tr>
+</tbody>
+</table>
+<h4 id="4、调试"><a href="#4、调试" class="headerlink" title="4、调试"></a>4、调试</h4><p>1、远程调试</p>
+<ul>
+<li>Mobile Emulation：chrome 上面启动开发者工具，即可开启移动仿真状态</li>
+<li>ios 远程调试 手机上 safari 浏览器开启开发者模式（设置–safari–高级–打开web检查器），电脑上面打开 safari 浏览器的开发模式，连接上手机，找到你手机上面打开的页面即可进行调试了。</li>
+<li>Android 远程调试 安装Addroid Chrome 31+，使用USB 连接上手机，开启android的 USB debugger，安装ADB 扩展，安装后手动启动，PC chrome 使用 about: inspect 开启远程调试的控制台，单击 inspect 开始调试</li>
+<li>weinre</li>
+<li>HTTP 代理服务器</li>
+</ul>
+<p>2、设备调试</p>
+<ul>
+<li>设备模拟器</li>
+<li>远程设备</li>
+</ul>
+<h3 id="三、基准"><a href="#三、基准" class="headerlink" title="三、基准"></a>三、基准</h3><h3 id="四、检测"><a href="#四、检测" class="headerlink" title="四、检测"></a>四、检测</h3><h4 id="1、终端"><a href="#1、终端" class="headerlink" title="1、终端"></a>1、终端</h4><p><strong>分类</strong>：</p>
+<ul>
+<li>按设备类型划分：目前普遍说的终端为三大类：PC电脑、平板、手机，当然TV 电视也即将成为第四大类</li>
+<li>按操作系统划分：<ul>
+<li>apple：OS X（桌面系统）、iOS（iPhone和Pad）</li>
+<li>Google：Android（Phone和Pad）</li>
+<li>Microsoft：覆盖手机、平板、个人电脑的windows系列</li>
+</ul>
+</li>
+</ul>
+<p><strong>终端检测</strong>：</p>
+<ul>
+<li>需要检测的场景：显示或隐藏特定内容////加载特定的静态资源样式、脚本////静态扫描修改文件源////返回指定图片质量、大小的图片</li>
+<li>检测的原理：用户代理（User Agent—UA）最为常用</li>
+<li>检测的实现：</li>
+</ul>
+<p><strong>遗留问题</strong></p>
+<ul>
+<li>硬件信息：UA 不准（浏览器厂商把UA伪装）</li>
+<li>更精准的终端检测：引入机器学习，采集一定数量的样本学习后用于终端检测</li>
+</ul>
+<h3 id="五、接口"><a href="#五、接口" class="headerlink" title="五、接口"></a>五、接口</h3><h4 id="1、跨终端流程复用"><a href="#1、跨终端流程复用" class="headerlink" title="1、跨终端流程复用"></a>1、跨终端流程复用</h4><ul>
+<li>如：购物网站前台页面展示有5种形式（PC、Phone Web、Pad Web、Phone App、Pad App），但后台的逻辑基本一致，则使用一套接口，增加流程的复用性。</li>
+<li>如：移动优先，优先考虑移动端页面的展示，再开发PC的时候可适当扩展API</li>
+</ul>
+<h4 id="2、IF-interFace"><a href="#2、IF-interFace" class="headerlink" title="2、IF(interFace)"></a>2、IF(interFace)</h4><p>IF 主要包括以下几个部分：</p>
+<ul>
+<li>接口描述：请求、响应数据格式</li>
+<li>接口文档：由接口描述生成接口文档</li>
+<li>接口Mock：由接口描述生成接口 Mock 数据</li>
+<li>接口校验：提供校验服务（HTTP）和校验工具包，支持多重格式的接口校验</li>
+</ul>
+<p><strong>缘由：来自于一次重构</strong></p>
+<h3 id="六、定位"><a href="#六、定位" class="headerlink" title="六、定位"></a>六、定位</h3><h4 id="1、定位："><a href="#1、定位：" class="headerlink" title="1、定位："></a>1、定位：</h4><ul>
+<li>hash：不利于SEO</li>
+<li>history API：可结合ajax通过pjax的方式实现修改路由同时不刷新页面，只刷新部分内容<ul>
+<li>history.pushState</li>
+<li>history.replaceState</li>
+<li>window.onpopstate：页面前进后退的时候触发</li>
+</ul>
+</li>
+<li>视图定位：</li>
+</ul>
+<h4 id="2、数据："><a href="#2、数据：" class="headerlink" title="2、数据："></a>2、数据：</h4>
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2018/09/06/ckybpqxgw0019d2nh666gevc6/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2018-09-07 17:43:45
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/web/" title="web">
+                        <b>#</b> web
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2018/09/07/ckybpqxgx001cd2nh7r0308sh/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、跨终端web"><span class="toc-text">一、跨终端web</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1、响应式-单域"><span class="toc-text">1、响应式(单域)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2、多站点-单域"><span class="toc-text">2、多站点(单域)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3、多模板-多域"><span class="toc-text">3、多模板(多域)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4、多平台"><span class="toc-text">4、多平台</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、Mobile-Web"><span class="toc-text">二、Mobile Web</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1、html5特点"><span class="toc-text">1、html5特点</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2、针对移动web的页面模板"><span class="toc-text">2、针对移动web的页面模板</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3、触屏事件"><span class="toc-text">3、触屏事件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4、调试"><span class="toc-text">4、调试</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、基准"><span class="toc-text">三、基准</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四、检测"><span class="toc-text">四、检测</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1、终端"><span class="toc-text">1、终端</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#五、接口"><span class="toc-text">五、接口</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1、跨终端流程复用"><span class="toc-text">1、跨终端流程复用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2、IF-interFace"><span class="toc-text">2、IF(interFace)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#六、定位"><span class="toc-text">六、定位</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1、定位："><span class="toc-text">1、定位：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2、数据："><span class="toc-text">2、数据：</span></a></li></ol></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + %E8%B7%A8%E7%BB%88%E7%AB%AFWeb + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2018%2F09%2F07%2Fckybpqxen000od2nh07g25sh5%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2018/09/07/ckybpqxen000od2nh07g25sh5/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

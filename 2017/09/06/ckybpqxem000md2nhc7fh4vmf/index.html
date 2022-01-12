@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      知乎问答图片爬取 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">知乎问答图片爬取</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2017-09-06 20:26:25
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/%E7%88%AC%E8%99%AB%EF%BC%8CJava/" title="爬虫，Java">
+                    <b>#</b> 爬虫，Java
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <p>前段时间看到很多爬虫的案例，有很多爬招聘网站数据的，还有房产中介数据的，当然也有很多爬取知乎用户数据的，很多爬虫都是用Python语言，但是我不会用它，只能用Java写一个爬虫来抓取知乎问题下答案的图片链接</p>
+<a id="more"></a>
+<blockquote>
+<p>先上一个下载的图片的截图</p>
+</blockquote>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/ZhihuSpider.JPG" alt=""></p>
+<p>看到网上这么多人写爬虫，心里也是羡慕，想着自己什么时候也可以写一个简单的爬虫来了解下爬虫的原理，这几天刚开学，就尝试来抓取知乎的图片，主要是因为知乎某些问答的妹子都很好看……</p>
+<hr>
+<h4 id="抓取的原理"><a href="#抓取的原理" class="headerlink" title="抓取的原理"></a>抓取的原理</h4><p>想办法获取图片的链接，然后添加到一个容器中，依次下载，很简单的</p>
+<h4 id="过程"><a href="#过程" class="headerlink" title="过程"></a>过程</h4><p>一开始我单纯的认为只要获取一个问答首页的源码，然后用正则表达式拿到图片链接，接下来就不是事儿了。但是这样做只能获取到第一页的数据</p>
+<blockquote>
+<p>下图为第一页的数据，每一个List-item就是一个回答，这儿一共才20条</p>
+</blockquote>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/ListItem.JPG" alt=""></p>
+<p>点击查看更多回答。<code>F12</code>中打开<code>network</code>选项卡，再选择<code>XHR</code>查看AJAX请求，发现有一个链接特别长，查看<code>request</code>和<code>response</code>,就发现了下图中的东西</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/XHR.JPG" alt=""></p>
+<p>查看请求的详情，发现这个请求返回的是一个json数据</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/data.JPG" alt=""></p>
+<p>这是一个实例链接：<code>https://www.zhihu.com/api/v4/questions/38906616/answers?include=data%5B*%5D.is_normal%2Cadmin_closed_comment%2Creward_info%2Cis_collapsed%2Cannotation_action%2Cannotation_detail%2Ccollapse_reason%2Cis_sticky%2Ccollapsed_by%2Csuggest_edit%2Ccomment_count%2Ccan_comment%2Ccontent%2Ceditable_content%2Cvoteup_count%2Creshipment_settings%2Ccomment_permission%2Ccreated_time%2Cupdated_time%2Creview_info%2Cquestion%2Cexcerpt%2Crelationship.is_authorized%2Cis_author%2Cvoting%2Cis_thanked%2Cis_nothelp%2Cupvoted_followees%3Bdata%5B*%5D.mark_infos%5B*%5D.url%3Bdata%5B*%5D.author.follower_count%2Cbadge%5B%3F(type%3Dbest_answerer)%5D.topics&amp;offset=3&amp;limit=20&amp;sort_by=default</code></p>
+<p>链接参数中的offset表示与第一个回答的偏移量，limit表示返回回答数据的条数</p>
+<p>我以为这样就可以了，用在线get工具测试了一下，看是不是相同的结果</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/responsewithoutauth.JPG" alt=""></p>
+<p>结果响应了这样的json数据，根据那个英语，猜测是没有授权，于是去浏览器开发人员工具下寻找有没有什么特殊<code>request</code>的<code>Header</code>没有添加，于是发现了一个<code>authorization</code>的字段，故添加好header参数后再次尝试，结果呢？这次就对了</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/getwithauth.JPG" alt=""></p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/responsewithauth.JPG" alt=""></p>
+<p>如果问这个<code>authorization</code>字段的值怎么来的，其实我也不知道，我是复制的浏览器的数据</p>
+<p>现在拿到了回答的json数据</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/data_json.JPG" alt=""></p>
+<p>经过分析，每一个回答的json中有一个content属性，这个属性包含了回答的内容，其中就含有图片的链接。到此，感觉寄几终于找到了光明</p>
+<p><img src="/2017/09/06/ckybpqxem000md2nhc7fh4vmf/content.JPG" alt=""></p>
+<p>通过这个属性的值，就可以拿到图片的链接。</p>
+<p>返回的这个json数据中还包含回答的总数等内容，更多有用的就自己去挖掘了哟</p>
+<h4 id="使用的jar包："><a href="#使用的jar包：" class="headerlink" title="使用的jar包："></a>使用的jar包：</h4><ul>
+<li><p>httpclient</p>
+</li>
+<li><p>json-lib:解析json数据</p>
+</li>
+</ul>
+<blockquote>
+<p>使用这些jar包还需要其它依赖包</p>
+</blockquote>
+<h4 id="需要注意的地方"><a href="#需要注意的地方" class="headerlink" title="需要注意的地方"></a>需要注意的地方</h4><ol>
+<li>这个小项目中没有登录，所以有的需要登录账号的问题就不能获取到图片链接，会跳转到登录的页面</li>
+<li>图片较多的时候下载时间会比较长，没有使用多线程技术</li>
+</ol>
+<p>最后附上项目的<code>github</code>地址<a href="https://github.com/watertreestar/ZhihuSpider" target="_blank" rel="noopener">Java抓取知乎图片</a></p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2017-09-06 20:26:25
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/%E7%88%AC%E8%99%AB%EF%BC%8CJava/" title="爬虫，Java">
+                        <b>#</b> 爬虫，Java
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2018/07/12/ckybpqxgq000xd2nhazxq18og/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-4"><a class="toc-link" href="#抓取的原理"><span class="toc-text">抓取的原理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#过程"><span class="toc-text">过程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#使用的jar包："><span class="toc-text">使用的jar包：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#需要注意的地方"><span class="toc-text">需要注意的地方</span></a></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + %E7%9F%A5%E4%B9%8E%E9%97%AE%E7%AD%94%E5%9B%BE%E7%89%87%E7%88%AC%E5%8F%96 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2017%2F09%2F06%2Fckybpqxem000md2nhc7fh4vmf%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2017/09/06/ckybpqxem000md2nhc7fh4vmf/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

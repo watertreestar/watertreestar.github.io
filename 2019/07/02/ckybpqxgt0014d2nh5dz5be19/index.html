@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      SpringSecurity初探 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">SpringSecurity初探</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2019-07-02 21:56:33
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/%E8%AE%A4%E8%AF%81%EF%BC%8C%E6%8E%88%E6%9D%83%EF%BC%8CSpringSecurity/" title="认证，授权，SpringSecurity">
+                    <b>#</b> 认证，授权，SpringSecurity
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h2 id="SpringSecurity，为什么？"><a href="#SpringSecurity，为什么？" class="headerlink" title="SpringSecurity，为什么？"></a>SpringSecurity，为什么？</h2><p>在权限管理框架中，有两座大山，Shiro和SpringSecurity,后者具有天然具有Spring家族的支撑，提供了一系列完整的功能，Shiro作为一个简单的框架，也可以满足大多数场景下的需求。之前简单使用过Shiro，知道它是通过一些列的Filter来做认证的鉴权。这次打算看一下SpringSecurity的使用，听过这个框架比较复杂，在网上看的一些文字教程也比较晕，还是自己来探究一下才能有更好的理解<br><a id="more"></a></p>
+<h2 id="Spring-Security介绍"><a href="#Spring-Security介绍" class="headerlink" title="Spring Security介绍"></a>Spring Security介绍</h2><ul>
+<li>开源</li>
+<li>提供企业级的安全认证和授权</li>
+</ul>
+<p>Spring安全拦截器</p>
+<ul>
+<li><p>认证管理器</p>
+<ul>
+<li><p>认证模式</p>
+<ul>
+<li><p>Basic </p>
+<p>HTTP 1.0中使用的认证方法，使用用户名和密码Base64编码的方式</p>
+<p>浏览器弹出对话框，用户输入用户名和密码，加入头部</p>
+<p>无状态</p>
+<p>安全性不足</p>
+</li>
+<li><p>Digest</p>
+<p>解决安全性问题</p>
+<p>浏览器对用户名和密码请求方法，URL等进行MD5运算，发送到服务器</p>
+<p>服务器获取到用户名密码，请求方法，URL等MD5运算，查看是否相等</p>
+<p>安全性问题依然存在</p>
+</li>
+<li><p>X.509</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>访问决策管理器</p>
+</li>
+<li><p>运行身份管理器</p>
+</li>
+</ul>
+<h3 id="常用权限拦截器"><a href="#常用权限拦截器" class="headerlink" title="常用权限拦截器"></a>常用权限拦截器</h3><p>Spring-Security拦截器链流程图</p>
+<p><img src="/2019/07/02/ckybpqxgt0014d2nh5dz5be19/Spring-Security认证Filter.jpg" alt=""></p>
+<p>介绍几个常用的Filter</p>
+<ol>
+<li><p>SecurityContextPersistenceFilter</p>
+<p>基于ThreadLocal</p>
+</li>
+<li><p>LogoutFilter</p>
+<p>发送注销请求时，清空用户的session,cookie，重定向</p>
+</li>
+<li><p>AbstractAuthenticationProcessingFilter</p>
+<p>用户登录的请求</p>
+</li>
+<li><p>DefaultLoginPageGeneratingFilter</p>
+<p>生成登录页面</p>
+</li>
+<li><p>BasicAuthencationFilter</p>
+</li>
+<li><p>SecurityContextHolderAwareRequestFilter</p>
+<p>包装，提供额外的数据</p>
+</li>
+<li><p>RememberMeAuthemticationFilter</p>
+<p>提供RememberMe功能，当cookie中存在rememberme时，登录成功后生成唯一cookie</p>
+</li>
+<li><p>ExceptionTranlationFilter</p>
+<p>请求到对应的页面，响应异常</p>
+<p>ExceptionTranslationFilter异常处理过滤器,该过滤器用来处理在系统认证授权过程中抛出的异常（也就是下一个过滤器<code>FilterSecurityInterceptor</code>）,主要是 处理  <code>AuthenticationException</code> 和<code>AccessDeniedException</code></p>
+</li>
+<li><p>SessionManagerFilter</p>
+</li>
+<li><p>FilterSecurityInterceptor（授权）</p>
+<p>用户没有登录，抛出未登录异常</p>
+<p>用户登录，但是没有权限访问该资源，抛出拒绝访问的异常</p>
+<p>用户登录，有权限，则放行</p>
+</li>
+</ol>
+<pre><code>此过滤器为认证授权过滤器链中最后一个过滤器，该过滤器之后就是请求真正的 服务
+</code></pre><h3 id="Filter如何执行"><a href="#Filter如何执行" class="headerlink" title="Filter如何执行"></a>Filter如何执行</h3><blockquote>
+<p>FilterChainProxy会按照顺序调用一组Filter，完成授权验证</p>
+</blockquote>
+<p>请求首先经过Servlet Filter链，这里面包含6个Filter</p>
+<p><img src="/2019/07/02/ckybpqxgt0014d2nh5dz5be19/springboot mvc 启动6大Filter.png" alt=""></p>
+<p>可以看到如下的一个Filter</p>
+<p><code>ApplicationFilterConfig[name=springSecurityFilterChain, filterClass=org.springframework.boot.web.servlet.DelegatingFilterProxyRegistrationBean$1]</code></p>
+<p>这个就是Spring Security Filter的入口，它的类型是<code>DelegationFilterProxy</code></p>
+<p>那么，这个DelegationFilterProxy到底执行了什么样的操作呢？可以简单看一下源码</p>
+<p>重点看一下部分的源码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">DelegatingFilterProxy</span> <span class="keyword">extends</span> <span class="title">GenericFilterBean</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 类中的属性</span></span><br><span class="line">    <span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> String contextAttribute;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> WebApplicationContext webApplicationContext;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> String targetBeanName;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">boolean</span> targetFilterLifecycle = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 重点在于这个属性</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">	<span class="meta">@Nullable</span></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">volatile</span> Filter delegate;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">final</span> Object delegateMonitor = <span class="keyword">new</span> Object();</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(ServletRequest request, ServletResponse response, FilterChain filterChain)</span></span></span><br><span class="line"><span class="function">			<span class="keyword">throws</span> ServletException, IOException </span>&#123;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Lazily initialize the delegate if necessary.</span></span><br><span class="line">		Filter delegateToUse = <span class="keyword">this</span>.delegate;</span><br><span class="line">		<span class="keyword">if</span> (delegateToUse == <span class="keyword">null</span>) &#123;</span><br><span class="line">			<span class="keyword">synchronized</span> (<span class="keyword">this</span>.delegateMonitor) &#123;</span><br><span class="line">				delegateToUse = <span class="keyword">this</span>.delegate;</span><br><span class="line">				<span class="keyword">if</span> (delegateToUse == <span class="keyword">null</span>) &#123;</span><br><span class="line">					WebApplicationContext wac = findWebApplicationContext();</span><br><span class="line">					<span class="keyword">if</span> (wac == <span class="keyword">null</span>) &#123;</span><br><span class="line">						<span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException(<span class="string">"No WebApplicationContext found: "</span> +</span><br><span class="line">								<span class="string">"no ContextLoaderListener or DispatcherServlet registered?"</span>);</span><br><span class="line">					&#125;</span><br><span class="line">					delegateToUse = initDelegate(wac);</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="keyword">this</span>.delegate = delegateToUse;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Let the delegate perform the actual doFilter operation.</span></span><br><span class="line">		invokeDelegate(delegateToUse, request, response, filterChain);</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">// .......</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * Initialize the Filter delegate, defined as bean the given Spring</span></span><br><span class="line"><span class="comment">	 * application context.</span></span><br><span class="line"><span class="comment">	 * &lt;p&gt;The default implementation fetches the bean from the application context</span></span><br><span class="line"><span class="comment">	 * and calls the standard &#123;<span class="doctag">@code</span> Filter.init&#125; method on it, passing</span></span><br><span class="line"><span class="comment">	 * in the FilterConfig of this Filter proxy.</span></span><br><span class="line"><span class="comment">	 </span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> wac the root application context</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@return</span> the initialized delegate Filter</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@throws</span> ServletException if thrown by the Filter</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">protected</span> Filter <span class="title">initDelegate</span><span class="params">(WebApplicationContext wac)</span> <span class="keyword">throws</span> ServletException 	</span>&#123;</span><br><span class="line">		String targetBeanName = getTargetBeanName();</span><br><span class="line">		Assert.state(targetBeanName != <span class="keyword">null</span>, <span class="string">"No target bean name set"</span>);</span><br><span class="line">		Filter delegate = wac.getBean(targetBeanName, Filter<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">		<span class="keyword">if</span> (isTargetFilterLifecycle()) &#123;</span><br><span class="line">			delegate.init(getFilterConfig());</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> delegate;</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 调用delegate的doFilter方法</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">invokeDelegate</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">			Filter delegate, ServletRequest request, ServletResponse response, FilterChain filterChain)</span></span></span><br><span class="line"><span class="function">			<span class="keyword">throws</span> ServletException, IOException </span>&#123;</span><br><span class="line"></span><br><span class="line">		delegate.doFilter(request, response, filterChain);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>根据以上代码的注释我们可以看出大概的执行流程</p>
+<p>那类中的Filter delegate是什么呢？断点调式运行可以找到以下东西</p>
+<p><img src="/2019/07/02/ckybpqxgt0014d2nh5dz5be19/Spring-Security FilterProxy.png" alt=""></p>
+<p>这是Spring Security 提供的一个FilterChainProxy,关注其中的关键源码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FilterChainProxy</span> <span class="keyword">extends</span> <span class="title">GenericFilterBean</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 包含一组SecurityFilterChain</span></span><br><span class="line">    <span class="keyword">private</span> List&lt;SecurityFilterChain&gt; filterChains;</span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doFilter</span><span class="params">(ServletRequest request, ServletResponse response,</span></span></span><br><span class="line"><span class="function"><span class="params">			FilterChain chain)</span> <span class="keyword">throws</span> IOException, ServletException </span>&#123;</span><br><span class="line">		<span class="keyword">boolean</span> clearContext = request.getAttribute(FILTER_APPLIED) == <span class="keyword">null</span>;</span><br><span class="line">		<span class="keyword">if</span> (clearContext) &#123;</span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				request.setAttribute(FILTER_APPLIED, Boolean.TRUE);</span><br><span class="line">				doFilterInternal(request, response, chain);</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">finally</span> &#123;</span><br><span class="line">				SecurityContextHolder.clearContext();</span><br><span class="line">				request.removeAttribute(FILTER_APPLIED);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			doFilterInternal(request, response, chain);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doFilterInternal</span><span class="params">(ServletRequest request, ServletResponse response,</span></span></span><br><span class="line"><span class="function"><span class="params">			FilterChain chain)</span> <span class="keyword">throws</span> IOException, ServletException </span>&#123;</span><br><span class="line"></span><br><span class="line">		FirewalledRequest fwRequest = firewall</span><br><span class="line">				.getFirewalledRequest((HttpServletRequest) request);</span><br><span class="line">		HttpServletResponse fwResponse = firewall</span><br><span class="line">				.getFirewalledResponse((HttpServletResponse) response);</span><br><span class="line">		</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 根据请求获取匹配的一组Filter</span></span><br><span class="line">        <span class="comment">// 这里返回的Filter就是上述的那些AuthenticationFilter,比如UsernamePasswordAuthenticationFilter</span></span><br><span class="line">		List&lt;Filter&gt; filters = getFilters(fwRequest);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (filters == <span class="keyword">null</span> || filters.size() == <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span> (logger.isDebugEnabled()) &#123;</span><br><span class="line">				logger.debug(UrlUtils.buildRequestUrl(fwRequest)</span><br><span class="line">						+ (filters == <span class="keyword">null</span> ? <span class="string">" has no matching filters"</span></span><br><span class="line">								: <span class="string">" has an empty filter list"</span>));</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			fwRequest.reset();</span><br><span class="line"></span><br><span class="line">			chain.doFilter(fwRequest, fwResponse);</span><br><span class="line"></span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		VirtualFilterChain vfc = <span class="keyword">new</span> VirtualFilterChain(fwRequest, chain, filters);</span><br><span class="line">		vfc.doFilter(fwRequest, fwResponse);</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * Returns the first filter chain matching the supplied URL.</span></span><br><span class="line"><span class="comment">	 *</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> request the request to match</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@return</span> an ordered array of Filters defining the filter chain</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> List&lt;Filter&gt; <span class="title">getFilters</span><span class="params">(HttpServletRequest request)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">for</span> (SecurityFilterChain chain : filterChains) &#123;</span><br><span class="line">			<span class="keyword">if</span> (chain.matches(request)) &#123;</span><br><span class="line">				<span class="keyword">return</span> chain.getFilters();</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>到此，我们可以总结出如下的流程图：</p>
+<p><img src="/2019/07/02/ckybpqxgt0014d2nh5dz5be19/FilterChainProxy流程.png" alt=""></p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2019-07-02 21:56:33
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/%E8%AE%A4%E8%AF%81%EF%BC%8C%E6%8E%88%E6%9D%83%EF%BC%8CSpringSecurity/" title="认证，授权，SpringSecurity">
+                        <b>#</b> 认证，授权，SpringSecurity
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2019/07/22/ckybpqxgv0018d2nhcuf1f93v/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#SpringSecurity，为什么？"><span class="toc-text">SpringSecurity，为什么？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Spring-Security介绍"><span class="toc-text">Spring Security介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#常用权限拦截器"><span class="toc-text">常用权限拦截器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Filter如何执行"><span class="toc-text">Filter如何执行</span></a></li></ol></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + SpringSecurity%E5%88%9D%E6%8E%A2 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2019%2F07%2F02%2Fckybpqxgt0014d2nh5dz5be19%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2019/07/02/ckybpqxgt0014d2nh5dz5be19/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

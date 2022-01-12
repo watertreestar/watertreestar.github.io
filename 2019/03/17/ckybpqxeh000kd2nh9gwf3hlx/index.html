@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      从磁盘结构到数据库索引 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">从磁盘结构到数据库索引</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2019-03-17 09:10:49
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/" title="数据库索引">
+                    <b>#</b> 数据库索引
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h2 id="磁盘结构"><a href="#磁盘结构" class="headerlink" title="磁盘结构"></a>磁盘结构</h2><p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/Disk结构.jpg" alt=""></p>
+<p>按照顺时针方向，一个盘片由很多<code>section</code>组成，编号<code>0-N</code>。从里向外分，又由多个<code>track</code>组成，编号<code>0-N</code>,<code>section</code>和<code>track</code>交叉的地方叫做<code>block</code>,所以一个<code>block</code>可以由<code>section</code>和<code>track</code>来定位。每一个<code>block</code>的大小是一样的。</p>
+<a id="more"></a>
+<p>操作系统读取数据都是按照<code>block</code>为单位进行。</p>
+<p>在<code>block</code>内，数据的存储结构可以看成一个一维数组，大致结构是这样(假设一个<code>block</code>的<code>size</code>为<code>512byte</code>)</p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/Disk中一个block存储结构.jpg" alt=""></p>
+<p><code>Disk</code>的读写头可以旋转和伸缩来定位一个<code>block</code></p>
+<p>为了使磁盘中的数据可以被应用程序使用，必须先<code>copy</code>数据到随机读写存储器<code>RAM</code>中,而这正是耗时的操作。</p>
+<h2 id="磁盘如何存储数据库数据"><a href="#磁盘如何存储数据库数据" class="headerlink" title="磁盘如何存储数据库数据"></a>磁盘如何存储数据库数据</h2><p>假设现在有一个<code>Employee</code>表，其中有一些字段，如下所示，所以一行数据的大小是<code>128byte</code></p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/employee数据结构.png" alt=""></p>
+<p>假设总共有100行这样的数据</p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/employee在和磁盘的关系.png" alt=""></p>
+<p>所以每一个<code>block</code>可以存储4行这样的数据，这<code>100行</code>数据需要<code>25个block</code>,假设现在按照这样的方式来查询一条记录，最多需要查找<code>25个block</code>.</p>
+<p>那索引为什么可以减少查找的次数呢？</p>
+<h2 id="什么是索引"><a href="#什么是索引" class="headerlink" title="什么是索引"></a>什么是索引</h2><p>我们建一个简单的索引，有两个字段，一个<code>eid</code>，表示<code>employee</code>的<code>id</code>，还有一个字段<code>pointer</code>，指向数据存储在<code>disk</code>上的位置。<code>empolyee</code>中的每一行，在<code>index</code>上都有一条记录 </p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/简单的索引.png" alt=""></p>
+<p>当然我们也需要考虑如何存储这个索引表。如果索引存放在<code>disk</code>上，那么这个索引需要占据多少个<code>block</code>呢？<code>eid</code>大小为<code>10bytes</code>，<code>pointer</code>大小为<code>6bytes</code>，所以一行索引就有<code>16个bytes</code>大小。<code>100条</code>索引就需要占据<code>100 * 16 / 512</code>，也就是 <code>4个block</code> </p>
+<p>在现在的情况下，我们查找<code>employee</code>表中的一条数据，最多就只需要<code>4</code>次索引表查找和一次<code>employee</code>表读取,相比没有索引的情况效率提升了很多</p>
+<h2 id="多级索引"><a href="#多级索引" class="headerlink" title="多级索引"></a>多级索引</h2><p>如果现在把<code>employee</code>表中的数据行数增加到<code>1000行</code>，那么同理，数据表需要<code>250个block</code>,索引表需要<code>40个block</code>,现在查询一条记录就最多需要<code>41次block</code>的读取和拷贝(<code>IO</code>)</p>
+<p>根据建立索引可以减少查找次数的理论，我们现在可以建立二级索引，也就是对上面的一级索引再建立索引，二级索引存储<strong>一级索引</strong><code>所在的block</code>,现在一级索引占用<code>40个bloc</code>k,所以二级索引表有<code>40</code>条记录，每一个索引记录大小为<code>16byte</code>,所以二级索引占用的<code>block</code>为<code>40*16/512</code>,也就是<code>2个block</code>。那么现在再来根据二级索引查找到一级索引所在的<code>block</code>,再根据一级索引直接定位到<code>employee</code>表中的某条数据所在的<code>block</code>，最多一共需要<code>2+1+1=4</code>次查找(<code>IO</code>),相比之前效率又提升了不少。</p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/二级索引.png" alt=""></p>
+<p>随着数据表中数据记录的增加，可以建立三级，四级….索引来减少IO次数</p>
+<h2 id="多路-n-way-搜索树"><a href="#多路-n-way-搜索树" class="headerlink" title="多路(n-way)搜索树"></a>多路(n-way)搜索树</h2><h3 id="二叉搜索树"><a href="#二叉搜索树" class="headerlink" title="二叉搜索树"></a>二叉搜索树</h3><p>每个节点只有一个值，一个节点最多两个子节点，左子节点比父节点小，右子节点比父节点大</p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/BST二叉搜索树.png" alt=""></p>
+<p>一颗树代表了<code>某一级</code>索引，搜索树的高度(深度)代表了<code>最多IO</code>的次数，所以减少树的高度可以减少<code>IO</code>的次数</p>
+<p>思路就是一个节点存储多个值，相应的子节点最大个数也可以有多个</p>
+<h3 id="n-way搜索树"><a href="#n-way搜索树" class="headerlink" title="n-way搜索树"></a>n-way搜索树</h3><p>由二叉搜索树扩展，让每个节点最多可以存<code>n-1</code>个索引值，每个节点可以有<code>n</code>个子节点，就是<code>n-way</code>搜索树 </p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/多路搜索树.png" alt=""></p>
+<p>上面就是一个<code>3路</code>搜索树</p>
+<p>我们可以使用这样的数据结构来作为索引，但是<code>n-way</code>搜索树也存在一些问题</p>
+<p>比如现在有三个数据：10，20，30，要用一个<code>10-way</code>搜索树来构建。很有可能，最终会构建出一个这样的树 </p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/多路搜索树缺陷.png" alt=""></p>
+<p>这是一种最坏的情况，相当于退化成链表结构。</p>
+<h2 id="B树：多路搜索树上增加限制"><a href="#B树：多路搜索树上增加限制" class="headerlink" title="B树：多路搜索树上增加限制"></a>B树：多路搜索树上增加限制</h2><p>B树，实际上可以看作是<code>n-way</code>搜索树 + 规则（如何构建这棵树的规则） </p>
+<p>规则：</p>
+<ul>
+<li>每个节点至少有<code>[n/2]</code>个子节点</li>
+<li>根节点可以最少有<code>2</code>个子节点</li>
+<li>所有的叶子节点必须在一个层级</li>
+<li>创建过程是由下往上的</li>
+</ul>
+<p>值：<code>10，20，40，50</code>。要构建一个<code>4-way</code>搜索树。<code>4-way</code>搜索树，意味着一个节点最多可以有<code>3</code>个值。 </p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/4-way搜索树.png" alt=""></p>
+<p>继续插入操作，最后形成的结果是：</p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/4-way搜索树做索引图示.png" alt=""></p>
+<p>每一个节点可以有多个值，每个值里面包含一个键和位置指针，键用来作为标识，数据值标识数据存放的位置</p>
+<h2 id="B-树"><a href="#B-树" class="headerlink" title="B+树"></a>B+树</h2><p>在<code>B+</code>树中，不是每个值旁边都有一个指向数据存储位置的指针，只有叶子节点才有。非叶子节点的值，在叶子节点上有他的副本 </p>
+<p><img src="/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/B+树索引.png" alt=""></p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2019/03/15/ckybpqxgj000rd2nhfdpb7711/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2019-03-17 09:10:49
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95/" title="数据库索引">
+                        <b>#</b> 数据库索引
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2019/07/02/ckybpqxgt0014d2nh5dz5be19/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#磁盘结构"><span class="toc-text">磁盘结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#磁盘如何存储数据库数据"><span class="toc-text">磁盘如何存储数据库数据</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#什么是索引"><span class="toc-text">什么是索引</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多级索引"><span class="toc-text">多级索引</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#多路-n-way-搜索树"><span class="toc-text">多路(n-way)搜索树</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#二叉搜索树"><span class="toc-text">二叉搜索树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#n-way搜索树"><span class="toc-text">n-way搜索树</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#B树：多路搜索树上增加限制"><span class="toc-text">B树：多路搜索树上增加限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#B-树"><span class="toc-text">B+树</span></a></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + %E4%BB%8E%E7%A3%81%E7%9B%98%E7%BB%93%E6%9E%84%E5%88%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B4%A2%E5%BC%95 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2019%2F03%2F17%2Fckybpqxeh000kd2nh9gwf3hlx%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2019/03/17/ckybpqxeh000kd2nh9gwf3hlx/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      CopyOnWriteList揭秘 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">CopyOnWriteList揭秘</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2018-12-12 14:00:34
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/Java/" title="Java">
+                    <b>#</b> Java
+                  </a>
+                </span>
+                
+                <span class="span--tag">
+                  <a href="/tags/%E9%9B%86%E5%90%88/" title="集合">
+                    <b>#</b> 集合
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h2 id="Vector和SynchronizedList"><a href="#Vector和SynchronizedList" class="headerlink" title="Vector和SynchronizedList"></a>Vector和SynchronizedList</h2><p>ArrayList是用来代替Vector，Vector是线程安全的容器，因为它在方法上都加上了synchronized同步关键字</p>
+<p>例如：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">copyInto</span><span class="params">(Object[] anArray)</span> </span>&#123;</span><br><span class="line">        System.arraycopy(elementData, <span class="number">0</span>, anArray, <span class="number">0</span>, elementCount);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Trims the capacity of this vector to be the vector's current</span></span><br><span class="line"><span class="comment"> * size. If the capacity of this vector is larger than its current</span></span><br><span class="line"><span class="comment"> * size, then the capacity is changed to equal the size by replacing</span></span><br><span class="line"><span class="comment"> * its internal data array, kept in the field &#123;<span class="doctag">@code</span> elementData&#125;,</span></span><br><span class="line"><span class="comment"> * with a smaller one. An application can use this operation to</span></span><br><span class="line"><span class="comment"> * minimize the storage of a vector.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">void</span> <span class="title">trimToSize</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    modCount++;</span><br><span class="line">    <span class="keyword">int</span> oldCapacity = elementData.length;</span><br><span class="line">    <span class="keyword">if</span> (elementCount &lt; oldCapacity) &#123;</span><br><span class="line">        elementData = Arrays.copyOf(elementData, elementCount);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<a id="more"></a>
+<p>而Collections.synchronizedList方法也是在方法内部加了synchronized关键字<br><img src="/2018/12/12/ckybpqxe60003d2nhf49l0kar/SynchronizedList对象.png" alt=""></p>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">	Vector vector = <span class="keyword">new</span> Vector();</span><br><span class="line">	vector.add(<span class="string">"a"</span>);</span><br><span class="line">	vector.add(<span class="string">"b"</span>);</span><br><span class="line">	vector.add(<span class="string">"c"</span>);</span><br><span class="line">	<span class="keyword">new</span> Thread(()-&gt;&#123;</span><br><span class="line">		getLast(vector);</span><br><span class="line">	&#125;).start();</span><br><span class="line">	<span class="keyword">new</span> Thread(()-&gt;&#123;</span><br><span class="line">		removeLast(vector);</span><br><span class="line">	&#125;).start();</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">new</span> Thread(()-&gt;&#123;</span><br><span class="line">		getLast(vector);</span><br><span class="line">	&#125;).start();</span><br><span class="line">	<span class="keyword">new</span> Thread(()-&gt;&#123;</span><br><span class="line">		removeLast(vector);</span><br><span class="line">	&#125;).start();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">removeLast</span><span class="params">(Vector vector)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> index  = vector.size() - <span class="number">1</span>;</span><br><span class="line">	vector.remove(index);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> Object <span class="title">getLast</span><span class="params">(Vector vector)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> index = vector.size() - <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">return</span> vector.get(index);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>以上这样的代码可能会发生异常，线程在交替执行的时候，我们自己方法getLast和removeLast没有保证原子性</p>
+<p>要解决以上问题也很简单，就是在我们自己写的方法中做同步处理，例如添加synchronized关键字，想下面示例这样：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">synchronized</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">removeLast</span><span class="params">(Vector vector)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> index  = vector.size() - <span class="number">1</span>;</span><br><span class="line">	vector.remove(index);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">synchronized</span> <span class="keyword">static</span> Object <span class="title">getLast</span><span class="params">(Vector vector)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> index = vector.size() - <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">return</span> vector.get(index);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>再看遍历Vector集合的时候<br><img src="/2018/12/12/ckybpqxe60003d2nhf49l0kar/Vector遍历异常.png" alt=""></p>
+<p>例如，遍历获取vector.size()为3，当其他线程对容器做了修改后，此时容器的size为2，遍历获取get(3)就会出现异常</p>
+<p>如果使用for-each(迭代器)来做上面的操作，会抛出ConcurrentModificationException异常</p>
+<p><img src="/2018/12/12/ckybpqxe60003d2nhf49l0kar/foreach遍历异常.png" alt=""></p>
+<p>要解决这个问题，也是在遍历方法对vector加锁</p>
+<h2 id="CopyOnWriteList"><a href="#CopyOnWriteList" class="headerlink" title="CopyOnWriteList"></a>CopyOnWriteList</h2><p>一般来说，我们会认为：CopyOnWriteArrayList是同步List的替代品，CopyOnWriteArraySet是同步Set的替代品</p>
+<p>无论是Hashtable到ConcurrentHashMap，Vector到CopyOnWriteArrayList。<br>JUC下支持并发的容器与老一代的线程安全类相比，都是在做锁粒度的优化</p>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><p>什么是COW</p>
+<blockquote>
+<p>如果有多个调用者（callers）同时请求相同资源（如内存或磁盘上的数据存储），他们会共同获取相同的指针指向相同的资源，<br>直到某个调用者试图修改资源的内容时，系统才会真正复制一份专用副本（private copy）给该调用者，<br>而其他调用者所见到的最初的资源仍然保持不变。<br>优点是如果调用者没有修改该资源，就不会有副本（private copy）被建立，因此多个调用者只是读取操作时可以共享同一份资源。</p>
+</blockquote>
+<p>看看CopyOnWriteArrayList中的数据结构<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** The lock protecting all mutators */</span></span><br><span class="line"><span class="keyword">final</span> <span class="keyword">transient</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"></span><br><span class="line"><span class="comment">/** The array, accessed only via getArray/setArray. */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> <span class="keyword">volatile</span> Object[] array;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Gets the array.  Non-private so as to also be accessible</span></span><br><span class="line"><span class="comment"> * from CopyOnWriteArraySet class.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">final</span> Object[] getArray() &#123;</span><br><span class="line">    <span class="keyword">return</span> array;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * Sets the array.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setArray</span><span class="params">(Object[] a)</span> </span>&#123;</span><br><span class="line">    array = a;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>数据结构比起ConcurrentHashMap来说很简单,使用Lock来上锁（修改数据的时候），使用Object数组来保持数据</p>
+<p>CopyOnWriteArrayList的特点</p>
+<ul>
+<li>CopyOnWriteArrayList是线程安全容器(相对于ArrayList)，底层通过复制数组的方式来实现。</li>
+<li>CopyOnWriteArrayList在遍历的使用不会抛出ConcurrentModificationException异常，并且遍历的时候就不用额外加锁</li>
+<li>元素可以为null</li>
+</ul>
+<h3 id="揭秘"><a href="#揭秘" class="headerlink" title="揭秘"></a>揭秘</h3><p>CopyOnWriteList如果做到并发环境下遍历容器而不发生异常呢？</p>
+<p>接下来我们看看iterator方法，该方法返回的是COWIterator类。我们可以看看这个类是怎么组成的<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">COWIterator</span>&lt;<span class="title">E</span>&gt; <span class="keyword">implements</span> <span class="title">ListIterator</span>&lt;<span class="title">E</span>&gt; </span>&#123;</span><br><span class="line">    <span class="comment">/** Snapshot of the array */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> Object[] snapshot;</span><br><span class="line">    <span class="comment">/** Index of element to be returned by subsequent call to next.  */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> cursor;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="title">COWIterator</span><span class="params">(Object[] elements, <span class="keyword">int</span> initialCursor)</span> </span>&#123;</span><br><span class="line">        cursor = initialCursor;</span><br><span class="line">        snapshot = elements;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> cursor &lt; snapshot.length;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasPrevious</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> cursor &gt; <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> E <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (! hasNext())</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">        <span class="keyword">return</span> (E) snapshot[cursor++];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>)</span><br><span class="line">    <span class="function"><span class="keyword">public</span> E <span class="title">previous</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (! hasPrevious())</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">        <span class="keyword">return</span> (E) snapshot[--cursor];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">nextIndex</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> cursor;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">previousIndex</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> cursor-<span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Not supported. Always throws UnsupportedOperationException.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> UnsupportedOperationException always; &#123;<span class="doctag">@code</span> remove&#125;</span></span><br><span class="line"><span class="comment">     *         is not supported by this iterator.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Not supported. Always throws UnsupportedOperationException.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> UnsupportedOperationException always; &#123;<span class="doctag">@code</span> set&#125;</span></span><br><span class="line"><span class="comment">     *         is not supported by this iterator.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">set</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Not supported. Always throws UnsupportedOperationException.</span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> UnsupportedOperationException always; &#123;<span class="doctag">@code</span> add&#125;</span></span><br><span class="line"><span class="comment">     *         is not supported by this iterator.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">add</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">forEachRemaining</span><span class="params">(Consumer&lt;? <span class="keyword">super</span> E&gt; action)</span> </span>&#123;</span><br><span class="line">        Objects.requireNonNull(action);</span><br><span class="line">        Object[] elements = snapshot;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> size = elements.length;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = cursor; i &lt; size; i++) &#123;</span><br><span class="line">            <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>) E e = (E) elements[i];</span><br><span class="line">            action.accept(e);</span><br><span class="line">        &#125;</span><br><span class="line">        cursor = size;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到类中有一个 Object[] snapshot这样的数组，根据代码可以直到这个数组保持的是待遍历的数组，对应的的就是CopyOnWriteArrayList中<br>保存数据的数组</p>
+<p>由上我们可以知道，迭代器中保存的是获取CopyOnWriteList集合迭代器时的数据。所以在迭代过程中修改原来集合的数据不会影响到迭代器的遍历，所以CopyOnWriteList不能保证数据的实时一致性。</p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2018/12/05/ckybpqxek000ld2nh17888u4s/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2018-12-12 14:00:34
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/Java/" title="Java">
+                        <b>#</b> Java
+                      </a>
+                    </span>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/%E9%9B%86%E5%90%88/" title="集合">
+                        <b>#</b> 集合
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2018/12/21/ckybpqxef000hd2nh6y7u7fyc/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Vector和SynchronizedList"><span class="toc-text">Vector和SynchronizedList</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#问题"><span class="toc-text">问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CopyOnWriteList"><span class="toc-text">CopyOnWriteList</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#实现"><span class="toc-text">实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#揭秘"><span class="toc-text">揭秘</span></a></li></ol></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + CopyOnWriteList%E6%8F%AD%E7%A7%98 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2018%2F12%2F12%2Fckybpqxe60003d2nhf49l0kar%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2018/12/12/ckybpqxe60003d2nhf49l0kar/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

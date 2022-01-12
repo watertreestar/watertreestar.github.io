@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      SpringBoot自动配置的魔法 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">SpringBoot自动配置的魔法</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2019-02-19 19:51:02
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/springboot/" title="springboot">
+                    <b>#</b> springboot
+                  </a>
+                </span>
+                
+                <span class="span--tag">
+                  <a href="/tags/spring/" title="spring">
+                    <b>#</b> spring
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h3 id="从-SpringBootApplication注解说起"><a href="#从-SpringBootApplication注解说起" class="headerlink" title="从@SpringBootApplication注解说起"></a>从@SpringBootApplication注解说起</h3><p><code>SpringBoot</code>会根据类路径下的类自动配置，省去了编写繁琐的<code>xml</code>配置文件。原本基于<code>xml</code>配置<code>bean</code>的方式编程基于Java代码，并且可以条件化配置，根据不同的场景配置也随之不同。是不是很智能</p>
+<a id="more"></a>
+<p>为了清楚<code>SpringBoot</code>自动配置的原理，我们从最简单的<code>SpringBoot</code>的启动类说起，看一个简单的启动实例</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@SpringBootApplication</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Application</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        SpringApplication.run(Application<span class="class">.<span class="keyword">class</span>)</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>SpringBoot</code>应用的启动很简单，就是一个<code>main</code>方法，然后执行<code>SpringApplication</code>的run方法。先不关心run方法是怎么执行的。我们先看<code>SpringBoot</code>应用的核心注解<code>@SpringBootApplication</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Target</span>(ElementType.TYPE)</span><br><span class="line"><span class="meta">@Retention</span>(RetentionPolicy.RUNTIME)</span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="meta">@Inherited</span></span><br><span class="line"><span class="meta">@SpringBootConfiguration</span></span><br><span class="line"><span class="meta">@EnableAutoConfiguration</span></span><br><span class="line"><span class="meta">@ComponentScan</span>(excludeFilters = &#123;</span><br><span class="line">		<span class="meta">@Filter</span>(type = FilterType.CUSTOM, classes = TypeExcludeFilter<span class="class">.<span class="keyword">class</span>),</span></span><br><span class="line"><span class="class">		@<span class="title">Filter</span>(<span class="title">type</span> </span>= FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter<span class="class">.<span class="keyword">class</span>) &#125;)</span></span><br><span class="line"><span class="class"><span class="title">public</span> @<span class="title">interface</span> <span class="title">SpringBootApplication</span> </span>&#123;</span><br><span class="line">	.....</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>查看该注解的源代码可知，这是一个组合注解。</p>
+<p>分别查看每个注解的含义</p>
+<p><code>@SpringBootConfiguration</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Target</span>(&#123;ElementType.TYPE&#125;)</span><br><span class="line"><span class="meta">@Retention</span>(RetentionPolicy.RUNTIME)</span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="meta">@interface</span> SpringBootConfiguration &#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可知该注解就是<code>@Configuration</code>注解，该注解什么这个一个配置类，在<code>SpringBoot</code>中很常见。</p>
+<p><code>@CompontScan</code>注解指定哪些包扫描或者不扫描。</p>
+<p>使<code>SpringBoot</code>应用拥有自动配置魔法的注解是<code>@EnableAutoConfiguraion</code>。该注解可以让SpringBoot根据类路径中的依赖为当前项目进行自动配置 ，所以SpringBoot可以自动配置主要是因为SpringBoot应用上的@EnableAutoConfiguraion注解来实现的，所以在启动类上加入该注解，就会开启自动配置。</p>
+<p>那么，这个注解是如何实现自动化配置的呢。接下来我们要一探究竟。</p>
+<h3 id="自动配置背后的注解"><a href="#自动配置背后的注解" class="headerlink" title="自动配置背后的注解"></a>自动配置背后的注解</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Target</span>(ElementType.TYPE)</span><br><span class="line"><span class="meta">@Retention</span>(RetentionPolicy.RUNTIME)</span><br><span class="line"><span class="meta">@Documented</span></span><br><span class="line"><span class="meta">@Inherited</span></span><br><span class="line"><span class="meta">@AutoConfigurationPackage</span></span><br><span class="line"><span class="meta">@Import</span>(AutoConfigurationImportSelector<span class="class">.<span class="keyword">class</span>)</span></span><br><span class="line"><span class="class"><span class="title">public</span> @<span class="title">interface</span> <span class="title">EnableAutoConfiguration</span> </span>&#123;</span><br><span class="line">	.....</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>该注解也是一个组合注解，这里有一个<code>@Import(AutoConfigurationImportSelector.class)</code>，那么<code>@Import</code>注解的作用是什么呢，查看<code>@Import</code>的源码注释，写着<code>Indicates one or more {@link Configuration @Configuration} classes to import.Provides functionality equivalent to the {@code &lt;import/&gt;} element in Spring XML.</code>，注释表明这个注解指明了要导入的配置类，在功能上和<code>Spring XML配置</code>中的<code>&lt;import&gt;</code>相同</p>
+<p>那这里<code>@Import</code>导入的一个<code>AutoConfigurationImportSelector</code>又什么作用呢？根据下面注释中的内容可以知道，<code>@Import</code>允许导入<code>ImportSelector,ImportBeanDefinitionRegistrar</code>的实现类，还有普通的类（在版本4.2后）</p>
+<figure class="highlight less"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-tag">Allows</span> <span class="selector-tag">for</span> <span class="selector-tag">importing</span> &#123;<span class="variable">@code</span> <span class="variable">@Configuration</span>&#125; <span class="selector-tag">classes</span>, &#123;<span class="variable">@link</span> ImportSelector&#125; <span class="selector-tag">and</span> &#123;<span class="variable">@link</span> ImportBeanDefinitionRegistrar&#125; <span class="selector-tag">implementations</span>, <span class="selector-tag">as</span> <span class="selector-tag">well</span> <span class="selector-tag">as</span> <span class="selector-tag">regular</span> <span class="selector-tag">component</span> <span class="selector-tag">classes</span> (as of <span class="number">4.2</span>; analogous to &#123;<span class="variable">@link</span> AnnotationConfigApplicationContext#register&#125;).</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>到了这里，说一个与@Import注解相关的东西，Spring框架本身提供了几个以Enable打头的注解，根据名字可知这是开启某个功能，比如<code>@EnableScheduling</code>、<code>@EnableCaching</code>、<code>@EnableMBeanExport</code>等，<code>@EnableAutoConfiguration</code>的理念和这些注解其实是相同的的。 </p>
+</blockquote>
+<blockquote>
+<p><code>@EnableScheduling</code>是通过<code>@Import</code>将Spring调度框架相关的bean定义都加载到IoC容器。<code>@EnableMBeanExport</code>是通过<code>@Import</code>将JMX相关的bean定义加载到IoC容器。</p>
+<p><code>@EnableAutoConfiguration</code>也是借助<code>@Import</code>的帮助，将所有符合自动配置条件的bean定义加载到IoC容器。</p>
+</blockquote>
+<p>接下来关注EnableAutoConfigurationImportSelector 这个作用是什么。主要就是使用Spring 4 提供的的<code>SpringFactoriesLoader</code>工具类。通过<code>SpringFactoriesLoader.loadFactoryNames()</code>读取了ClassPath下面的<code>META-INF/spring.factories</code>文件 </p>
+<p><code>EnableAutoConfigurationImportSelector</code>通过读取<code>spring.factories</code>中的key为<code>org.springframework.boot.autoconfigure.EnableAutoConfiguration</code>的值。如<code>spring-boot-autoconfigure-1.5.1.RELEASE.jar</code>中的<code>spring.factories</code>文件包含以下内容：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">org.springframework.boot.autoconfigure.EnableAutoConfiguration</span>=<span class="string">\</span></span><br><span class="line">org.springframework.boot.autoconfigure.admin.SpringApplicationAdminJmxAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.aop.AopAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.cloud.CloudAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.context.MessageSourceAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.couchbase.CouchbaseAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.dao.PersistenceExceptionTranslationAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveDataAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveRepositoriesAutoConfiguration,\</span><br><span class="line">org.springframework.boot.autoconfigure.data.cassandra.CassandraRepositoriesAutoConfiguration,\</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>如果我们新定义了一个<code>starter</code>的话，也要在该<code>starter</code>的<code>jar</code>包中提供 <code>META-INFO/spring.factories</code>文件，并且为其配置<code>org.springframework.boot.autoconfigure.EnableAutoConfiguration</code>对应的配置类 </p>
+</blockquote>
+<p>从<code>EnableAutoConfiguration</code>寻找一个配置类CacheAutoConfiguration</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="meta">@ConditionalOnClass</span>(CacheManager<span class="class">.<span class="keyword">class</span>)</span></span><br><span class="line"><span class="class">@<span class="title">ConditionalOnBean</span>(<span class="title">CacheAspectSupport</span>.<span class="title">class</span>)</span></span><br><span class="line"><span class="class">@<span class="title">ConditionalOnMissingBean</span>(<span class="title">value</span> </span>= CacheManager<span class="class">.<span class="keyword">class</span>, <span class="title">name</span> </span>= <span class="string">"cacheResolver"</span>)</span><br><span class="line"><span class="meta">@EnableConfigurationProperties</span>(CacheProperties<span class="class">.<span class="keyword">class</span>)</span></span><br><span class="line"><span class="class">@<span class="title">AutoConfigureAfter</span>(</span>&#123; CouchbaseAutoConfiguration<span class="class">.<span class="keyword">class</span>, <span class="title">HazelcastAutoConfiguration</span>.<span class="title">class</span>,</span></span><br><span class="line"><span class="class">		<span class="title">HibernateJpaAutoConfiguration</span>.<span class="title">class</span>, <span class="title">RedisAutoConfiguration</span>.<span class="title">class</span> &#125;)</span></span><br><span class="line"><span class="class">@<span class="title">Import</span>(<span class="title">CacheConfigurationImportSelector</span>.<span class="title">class</span>)</span></span><br><span class="line"><span class="class"><span class="title">public</span> <span class="title">class</span> <span class="title">CacheAutoConfiguration</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="meta">@ConditionalOnMissingBean</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> CacheManagerCustomizers <span class="title">cacheManagerCustomizers</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">			ObjectProvider&lt;List&lt;CacheManagerCustomizer&lt;?&gt;&gt;&gt; customizers)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> CacheManagerCustomizers(customizers.getIfAvailable());</span><br><span class="line">	&#125;</span><br><span class="line">    .......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这是一个<code>@Configuration</code>配置类，包含<code>@Bean</code>的方法的返回值会注册为一个<code>bean</code></p>
+<p>在这个类和方法上我们看到很多条件配置注解</p>
+<p>条件配置主要的注解是<code>@Conditional</code>,这个注解指定一个实现了<code>Condition</code>的类，类中实现了<code>matchs</code>方法，如果方法返回<code>true</code>，被<code>@Conditional</code>修饰的类或者方法才会创建<code>bean</code>。为了方便<code>Spring4</code>中已经帮我们实现了一些常用的条件配置注解</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ConditionalOnBean</span></span><br><span class="line"><span class="meta">@ConditionalOnClass</span></span><br><span class="line"><span class="meta">@ConditionalOnExpression</span></span><br><span class="line"><span class="meta">@ConditionalOnMissingBean</span></span><br><span class="line"><span class="meta">@ConditionalOnMissingClass</span></span><br><span class="line"><span class="meta">@ConditionalOnNotWebApplication</span></span><br></pre></td></tr></table></figure>
+<p>至此，我们已经分析了<code>SpringBoot</code>中自动化配置的基本原理，接下来我们会编写一个<code>spring-boot-starter</code></p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2019/02/18/ckybpqxed000dd2nhgmag5blg/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2019-02-19 19:51:02
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/springboot/" title="springboot">
+                        <b>#</b> springboot
+                      </a>
+                    </span>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/spring/" title="spring">
+                        <b>#</b> spring
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2019/03/04/ckybpqxec000cd2nhcp31597m/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#从-SpringBootApplication注解说起"><span class="toc-text">从@SpringBootApplication注解说起</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自动配置背后的注解"><span class="toc-text">自动配置背后的注解</span></a></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + SpringBoot%E8%87%AA%E5%8A%A8%E9%85%8D%E7%BD%AE%E7%9A%84%E9%AD%94%E6%B3%95 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2019%2F02%2F19%2Fckybpqxee000fd2nhg24387sk%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2019/02/19/ckybpqxee000fd2nhg24387sk/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

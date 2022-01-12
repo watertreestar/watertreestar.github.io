@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      Go-m3u8下载器(二) 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">Go-m3u8下载器(二)</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2021-05-05 08:44:43
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/Go/" title="Go">
+                    <b>#</b> Go
+                  </a>
+                </span>
+                
+                <span class="span--tag">
+                  <a href="/tags/m3u8/" title="m3u8">
+                    <b>#</b> m3u8
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>上篇中分析了一个m3u8文件的包含的属性，今天来通过代码来表示出这个数据结构并实现下载</p>
+<h2 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h2><h3 id="1-数据结构定义"><a href="#1-数据结构定义" class="headerlink" title="1. 数据结构定义"></a>1. 数据结构定义</h3><p>上一篇定义出了一个m3u8文件的结构，那我们现在就从这个文件中读取出计算机能够识别的结构。</p>
+<a id="more"></a>
+<p>这个文件的parse非常简单，不涉及到复杂的语法，现在我们需要覆盖的范围也就只是上一篇提到的几个，所以关键字也没有几个。那么我们就可以按行读取出来，<br>每一行就是一个字符串，根据这个字符串的头部来判断是一个什么结构，读取的过程中顺便判断这个文件是不是合法的，很容易。</p>
+<p>首先我们需要一个struct来表示一个m3u8文件<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> M3u8 <span class="keyword">struct</span> &#123;</span><br><span class="line">	Version        <span class="keyword">int8</span>              <span class="comment">// EXT-X-VERSION:version</span></span><br><span class="line">	MediaSequence  <span class="keyword">uint64</span>            <span class="comment">// Default 0, #EXT-X-MEDIA-SEQUENCE:sequence</span></span><br><span class="line">	Segments       []*Segment        <span class="comment">// Define a Play List</span></span><br><span class="line">	MasterPlaylist []*MasterPlaylist <span class="comment">// Define a Master Play List</span></span><br><span class="line">	Keys           <span class="keyword">map</span>[<span class="keyword">int</span>]*Key      <span class="comment">// Keys for per segment</span></span><br><span class="line">	EndList        <span class="keyword">bool</span>              <span class="comment">// #EXT-X-ENDLIST</span></span><br><span class="line">	PlaylistType   PlaylistType      <span class="comment">// VOD or EVENT</span></span><br><span class="line">	TargetDuration <span class="keyword">float64</span>           <span class="comment">// #EXT-X-TARGETDURATION:duration</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面看到有Segment和MasterPlayList,这两个二选一，也就是上篇说的一个m3u8可以是一个MasterPlayList来提供多码率，从MasterPalyList中可以选择一个<br>特定的码率，然后拿到一个新的m3u8文件，这个m3u8中包含了多个Segment，Segment包含了ts片段（也就是一个代表ts的URI）.还看到一个Key数组，这个是对于每一个<br>Segment的加密密钥</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Segment</span></span><br><span class="line"><span class="comment">// #EXTINF:10.000000,</span></span><br><span class="line"><span class="comment">// 5dd92bfb879c6421d7281c769f0f8c93-4.ts</span></span><br><span class="line"><span class="keyword">type</span> Segment <span class="keyword">struct</span> &#123;</span><br><span class="line">	URI      <span class="keyword">string</span></span><br><span class="line">	KeyIndex <span class="keyword">int</span></span><br><span class="line">	Title    <span class="keyword">string</span>  <span class="comment">// #EXTINF: duration,&lt;title&gt;</span></span><br><span class="line">	Duration <span class="keyword">float32</span> <span class="comment">// #EXTINF: duration,&lt;title&gt;</span></span><br><span class="line">	Length   <span class="keyword">uint64</span>  <span class="comment">// #EXT-X-BYTERANGE: length[@offset]</span></span><br><span class="line">	Offset   <span class="keyword">uint64</span>  <span class="comment">// #EXT-X-BYTERANGE: length[@offset]</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// MasterPlaylist</span></span><br><span class="line"><span class="comment">// #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=240000,RESOLUTION=416x234,CODECS="avc1.42e00a,mp4a.40.2"</span></span><br><span class="line"><span class="keyword">type</span> MasterPlaylist <span class="keyword">struct</span> &#123;</span><br><span class="line">	URI        <span class="keyword">string</span></span><br><span class="line">	BandWidth  <span class="keyword">uint32</span></span><br><span class="line">	Resolution <span class="keyword">string</span></span><br><span class="line">	Codecs     <span class="keyword">string</span></span><br><span class="line">	ProgramID  <span class="keyword">uint32</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Key</span></span><br><span class="line"><span class="comment">// #EXT-X-KEY:METHOD=AES-128,URI="key.key"</span></span><br><span class="line"><span class="keyword">type</span> Key <span class="keyword">struct</span> &#123;</span><br><span class="line">	<span class="comment">// 'AES-128' or 'NONE'</span></span><br><span class="line">	<span class="comment">// If the encryption method is NONE, the URI and the IV attributes MUST NOT be present</span></span><br><span class="line">	Method CryptMethod</span><br><span class="line">	URI    <span class="keyword">string</span></span><br><span class="line">	IV     <span class="keyword">string</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="2-parser"><a href="#2-parser" class="headerlink" title="2. parser"></a>2. parser</h3><p>定义好这个结构后，就需要从文件中解析出这个结构，我们要做的就是从一个文件中读取一行，把这一行作为字符串，判断字符串的头部是什么开始的，如果匹配上了，就进一步处理<br>比如我们遇到一行<br><figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-id">#EXTINF</span><span class="selector-pseudo">:10.000000</span>,<span class="selector-tag">hello</span></span><br></pre></td></tr></table></figure><br>我们就可以认为这是一个segment的的duration和title定义,那么我们就可以按照以下的方式来解析<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> strings.HasPrefix(line, <span class="string">"#EXTINF:"</span>):</span><br><span class="line">    <span class="keyword">if</span> extInf &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span>, fmt.Errorf(<span class="string">"duplicate EXTINF: %s, line: %d"</span>, line, i+<span class="number">1</span>)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> seg == <span class="literal">nil</span> &#123;</span><br><span class="line">        seg = <span class="built_in">new</span>(Segment)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">var</span> s <span class="keyword">string</span></span><br><span class="line">    <span class="keyword">if</span> _, err := fmt.Sscanf(line, <span class="string">"#EXTINF:%s"</span>, &amp;s); err != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span>, err</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> strings.Contains(s, <span class="string">","</span>) &#123;</span><br><span class="line">        split := strings.Split(s, <span class="string">","</span>)</span><br><span class="line">        seg.Title = split[<span class="number">1</span>]</span><br><span class="line">        s = split[<span class="number">0</span>]</span><br><span class="line">    &#125;</span><br><span class="line">    df, err := strconv.ParseFloat(s, <span class="number">32</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nil</span>, err</span><br><span class="line">    &#125;</span><br><span class="line">    seg.Duration = <span class="keyword">float32</span>(df)</span><br><span class="line">    seg.KeyIndex = keyIndex</span><br><span class="line">    extInf = <span class="literal">true</span></span><br></pre></td></tr></table></figure></p>
+<p>整个parse过程就类似于上面这种，通过for + switch-case 来实现。其实就是一个简单的词法分析器，由于这里我们没有做语法分析，所以对于错误我们不能发现。<br>更加完善的词法分析可以了解编译原理的知识，或者通过有限自动机来实现</p>
+<h3 id="3-download"><a href="#3-download" class="headerlink" title="3. download"></a>3. download</h3><p>完成分析，构造出我们要的结构以后，就可以来进行下载了，通过http请求，然后保存每一个ts片段，最后我们把所有的ts片段合并成一个文件便完成了下载。<br>为了加快下载的速度，当然不能少了协程</p>
+<p>关键下载的代码：<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> wg sync.WaitGroup</span><br><span class="line"><span class="keyword">for</span> &#123;</span><br><span class="line">    tsIdx, end, err := d.next()</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> end &#123;</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line">    &#125;</span><br><span class="line">    wg.Add(<span class="number">1</span>)</span><br><span class="line">    <span class="keyword">go</span> <span class="function"><span class="keyword">func</span><span class="params">(idx <span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">        <span class="keyword">defer</span> wg.Done()</span><br><span class="line">        <span class="keyword">if</span> err := d.download(idx); err != <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="comment">// Back into the queue, retry request</span></span><br><span class="line">            fmt.Printf(<span class="string">"[failed] %s\n"</span>, err.Error())</span><br><span class="line">            <span class="keyword">if</span> err := d.back(idx); err != <span class="literal">nil</span> &#123;</span><br><span class="line">                fmt.Printf(err.Error())</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;(tsIdx)</span><br><span class="line">&#125;</span><br><span class="line">wg.Wait()</span><br><span class="line"><span class="keyword">if</span> err := d.merge(); err != <span class="literal">nil</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> err</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> <span class="literal">nil</span></span><br></pre></td></tr></table></figure></p>
+<p>这个工具整体来说比较简单，这里这是提供一种思路，本身就很容易通过任何一门语言来实现</p>
+<p>在做这个过程中，我也参考了别人的思路和代码。</p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2021/05/01/ckybpqxe90007d2nh4stx15yl/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2021-05-05 08:44:43
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/Go/" title="Go">
+                        <b>#</b> Go
+                      </a>
+                    </span>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/m3u8/" title="m3u8">
+                        <b>#</b> m3u8
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2021/07/24/ckybpqxeg000id2nh6e8ceku4/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#代码"><span class="toc-text">代码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-数据结构定义"><span class="toc-text">1. 数据结构定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-parser"><span class="toc-text">2. parser</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-download"><span class="toc-text">3. download</span></a></li></ol></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + Go-m3u8%E4%B8%8B%E8%BD%BD%E5%99%A8(%E4%BA%8C) + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2021%2F05%2F05%2Fckybpqxe90008d2nhhz1agusv%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2021/05/05/ckybpqxe90008d2nhhz1agusv/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

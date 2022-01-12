@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      递归理解-汉诺塔问题 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">递归理解-汉诺塔问题</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2018-12-05 21:48:15
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/%E7%AE%97%E6%B3%95%EF%BC%8C%E9%80%92%E5%BD%92/" title="算法，递归">
+                    <b>#</b> 算法，递归
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <p>汉诺塔问题的求解可以巧妙利用递归思想</p>
+<blockquote>
+<p> 以下摘自知乎上我认为阐述得很清除回答：</p>
+</blockquote>
+<p>要用程序来解决这个问题，我们先定义一个移动函数：move（移动数，开始柱，中转柱，目标柱），<br>例如 move（2，A，B，C） 表示将2个盘子从A柱（开始柱）借助B柱（中转柱）移动到C柱（目标柱）。<br>关于开始柱，中转柱，目标柱这三个概念可以用移动过程中的某个状态来理解，</p>
+<a id="more"></a>
+<p>看下面一张图应该就能明白：<br>有三种状态的柱子，开始柱，中间柱，目标住，开始柱指的是开始状态时存放所有盘子的柱子，中转柱指的是中间状态时暂时存放n-1个（三层就是3-1个）盘子的柱子，<br>目标柱指的是盘子最终要移动到的柱子。这里需要注意，开始柱，中转柱，目标柱并不是一成不变的，而是会根据层次的不同而改变。（如果这里暂时不能理解的话，先读下去，再回头你就能明白了）。</p>
+<p>接着我们分情况讨论一下盘子的移动：</p>
+<h2 id="情况一"><a href="#情况一" class="headerlink" title="情况一"></a>情况一</h2><blockquote>
+<p>当盘子只有1个（调用 move（1，A，B，C））当盘子只有一个的时候，</p>
+</blockquote>
+<ul>
+<li>只要直接将盘子从开始柱移动到目标柱就可以了，并没有中间状态（即不用借助中转柱），在move方法中可以用一句话表示该移动动作  print（’A—&gt;C’）;</li>
+</ul>
+<h2 id="情况二"><a href="#情况二" class="headerlink" title="情况二"></a>情况二</h2><blockquote>
+<p> 当盘子有2个（调用 move（2，A，B，C））这个情况分三个步骤进行：</p>
+</blockquote>
+<ul>
+<li>step1.  把除了最大的盘子之外的盘子从A移到BA—&gt;B  (开始柱—&gt;中转柱)   【相当于调用  move（1，A，C，B）】</li>
+<li>step2.  把最大的盘子从A移到CA—&gt;C  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，B，C）】</li>
+<li>step3.  把除了最大的盘子之外的盘子从B移到CB—&gt;C  (中转柱—&gt;目标柱)   【相当于调用  move（1，B，A，C）】我想对于以上两个情况大家应该是没有什么疑问的，是可以确定的。</li>
+</ul>
+<p>然后我们来看三层的情况</p>
+<h2 id="情况三"><a href="#情况三" class="headerlink" title="情况三"></a>情况三</h2><blockquote>
+<p> 当盘子有3个（调用 move（3，A，B，C））这个情况同样分三步进行：</p>
+</blockquote>
+<ul>
+<li>step1. 把除了最大的盘子之外的盘子从A移到B（注意对于这个步骤来说此时A为开始柱，C为中转柱，B为目标柱，这样才能完成把最上面的2个盘子从A—&gt;B的任务）A—&gt;C  (开始柱—&gt;中转柱)   【相当于调用  move（1，A，B，C）】A—&gt;B  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，C，B）】C—&gt;B  (中转柱—&gt;目标柱)   【相当于调用  move（1，C，A，B）】</li>
+<li>step2.  把最大的盘子从A移到C（对于这个步骤来说此时A为开始柱，B为中转柱，C为目标柱，这样才能把最大的盘子从A—&gt;C）A—&gt;C  (开始柱—&gt;目标柱)   【相当于调用  move（1，A，B，C），即直接执行 print（’A—&gt;C’）】</li>
+<li>step3.  把除了最大的盘子之外的盘子从B移到C（注意对于这个步骤来说此时B为开始柱，A为中转柱，C为目标柱，这样才能完成把处于step2中的中转柱的2个盘子从B—&gt;C的任务）B —&gt; A  (开始柱—&gt;中转柱)   【相当于调用  move（1，B，C，A）】B —&gt; C  (开始柱—&gt;目标柱)   【相当于调用  move（1，B，A，C）】A —&gt; C  (中转柱—&gt;目标柱)   【相当于调用  move（1，A，B，C）】</li>
+</ul>
+<p>情况三的描述可能一下子不是那么好理解，但是大家应该能发现情况三的step1和step3的形式和整整个情况二的形式很像吧？而且要注意到分析的层次不相同时，开始柱，中转柱，目标柱是不一样的。</p>
+<p>对于step1来说中转柱是C，对于step3来说中转柱是A，对于整个情况三来说中转柱是B。</p>
+<p>前面我们已经确定了情况二调用的函数是 move（2，A，B，C），其等价于A—&gt;B A—&gt;CB—&gt;C这三步，然情况三的step1是A—&gt;C  A—&gt;B  C—&gt;B  这三步，跟情况二的形式是一样的，根据前面情况二的转化，那这三步就可以转化成函数 move（2，A，C，B)情况三的step3同理，做转化就成了函数 move（2，B，A，C）<br>而情况三的step2可以直接用一句  print（’A—&gt;C’） 来代替  move（1，A，B，C）所以整个情况三就可以这样来表示：</p>
+<ol>
+<li>move（2，A，C，B)  //step1. </li>
+<li>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </li>
+<li>把最大的盘子从A移到Cmove（2，B，A，C）  //step3.  </li>
+<li>把除了最大的盘子之外的盘子从B移到C我们又知道情况三调用的函数是  move（3，A，B，C），</li>
+</ol>
+<p>所以以上三行代码其实就等价于函数  move（3，A，B，C）。</p>
+<p>来到这里应该就可以发现一点端倪了，情况四（4层）调用的函数是 move（4，A，B，C），</p>
+<ol>
+<li>其用伪代码表示就是move（3，A，C，B)  //step1. </li>
+<li>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </li>
+<li>把最大的盘子从A移到Cmove（3，B，A，C）  //step3.  </li>
+<li>把除了最大的盘子之外的盘子从B移到C</li>
+</ol>
+<p>对此有怀疑的小伙伴可以自己写出情况四的每步具体步骤然后再做转化，限于篇幅这里不再列出。</p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>那其实可以总结出：对于n（n&gt;1）层汉诺塔，调用函数 move（n，A，B，C）来递归解决该问题，该函数执行的是</p>
+<ol>
+<li><p>move（n-1，A，C，B)  //step1. </p>
+</li>
+<li><p>把除了最大的盘子之外的盘子从A移到Bprint（’A—&gt;C’）  //step2.  </p>
+</li>
+<li><p>把最大的盘子从A移到Cmove（n-1，B，A，C）  //step3.  </p>
+</li>
+<li><p>把除了最大的盘子之外的盘子从B移到C</p>
+</li>
+</ol>
+<h2 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h2><p>然后有了以上的理解之后，我们就可以尝试写出解决该问题的代码了，Python实现：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">move</span><span class="params">(n,A,B,C)</span>:</span></span><br><span class="line">    <span class="keyword">if</span> n==<span class="number">1</span>:             <span class="comment"># 1个盘子，直接打印出移动动作</span></span><br><span class="line">        print(A,<span class="string">'---&gt;'</span>,C)</span><br><span class="line">    <span class="keyword">else</span>:                <span class="comment"># n &gt; 1时，用抽象出的3步来移动</span></span><br><span class="line">        move（n<span class="number">-1</span>，A，C，B) <span class="comment">#step1.  把除了最大的盘子之外的盘子从A移到B</span></span><br><span class="line">        print(A,<span class="string">'---&gt;'</span>,C)  <span class="comment">#step2.  把最大的盘子从A移到C</span></span><br><span class="line">        move（n<span class="number">-1</span>，B，A，C）<span class="comment">#step3.  把除了最大的盘子之外的盘子从B移到C</span></span><br></pre></td></tr></table></figure>
+<p>so，读到这里，我大胆猜测大部分人心里应该明白得七七八八了</p>
+<p>这里给出Java代码的实现</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Hanoi</span> </span>&#123;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">move</span><span class="params">(<span class="keyword">int</span> n,<span class="keyword">char</span> A,<span class="keyword">char</span> B,<span class="keyword">char</span> C)</span> </span>&#123;</span><br><span class="line">		<span class="comment">// 如果是移动过一个盘子</span></span><br><span class="line">		<span class="keyword">if</span>(n == <span class="number">1</span>) &#123;</span><br><span class="line">			System.out.println(A+<span class="string">"--&gt;"</span>+C);</span><br><span class="line">			<span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">		&#125;<span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// 一个以上的盘子</span></span><br><span class="line">			<span class="keyword">int</span> r1 = move(n-<span class="number">1</span>,A,C,B);</span><br><span class="line">			System.out.println(A+<span class="string">"--&gt;"</span>+C);</span><br><span class="line">			<span class="keyword">int</span> r2 = move(n-<span class="number">1</span>,B,A,C);</span><br><span class="line">			<span class="keyword">return</span> r1+r2+<span class="number">1</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">int</span> count = <span class="number">6</span>;</span><br><span class="line">		<span class="keyword">int</span> result = Hanoi.move(count, <span class="string">'A'</span>, <span class="string">'B'</span>,<span class="string">'C'</span>);</span><br><span class="line">		System.out.println(<span class="string">"total numbers of moves:"</span>+result);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2018/11/30/ckybpqxe80005d2nh1beg12te/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2018-12-05 21:48:15
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/%E7%AE%97%E6%B3%95%EF%BC%8C%E9%80%92%E5%BD%92/" title="算法，递归">
+                        <b>#</b> 算法，递归
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2018/12/12/ckybpqxe60003d2nhf49l0kar/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#情况一"><span class="toc-text">情况一</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#情况二"><span class="toc-text">情况二</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#情况三"><span class="toc-text">情况三</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#结论"><span class="toc-text">结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#代码"><span class="toc-text">代码</span></a></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + %E9%80%92%E5%BD%92%E7%90%86%E8%A7%A3-%E6%B1%89%E8%AF%BA%E5%A1%94%E9%97%AE%E9%A2%98 + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2018%2F12%2F05%2Fckybpqxek000ld2nh17888u4s%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2018/12/05/ckybpqxek000ld2nh17888u4s/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>

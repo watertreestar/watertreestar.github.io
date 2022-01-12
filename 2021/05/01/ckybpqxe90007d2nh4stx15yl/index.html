@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN" color-mode="light">
+
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="keywords" content="" />
+  <meta name="author" content="Xingyao" />
+  <meta name="description" content="A simple blog, code repository, coding record" />
+  
+  
+  <title>
+    
+      Go-m3u8下载器(一) 
+      
+      
+      |
+    
+     🤣幸遥同学
+  </title>
+
+  
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+    <link rel="icon" href="/images/favicon.png">
+  
+
+  <!-- Raleway-Font -->
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+
+  <!-- hexo site css -->
+  
+<link rel="stylesheet" href="/css/color-scheme.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/iconfont/iconfont.css">
+<link rel="stylesheet" href="/css/github-markdown.css">
+<link rel="stylesheet" href="/css/highlight.css">
+<link rel="stylesheet" href="/css/comments.css">
+
+
+  <!-- jquery3.3.1 -->
+  <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+
+  <!-- fancybox -->
+  <link href="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.css" rel="stylesheet">
+  <script async src="https://cdn.bootcss.com/fancybox/3.5.2/jquery.fancybox.min.js"></script>
+  
+<script src="/js/fancybox.js"></script>
+
+
+  
+
+  <script>
+    var html = document.documentElement
+    const colorMode = localStorage.getItem('color-mode')
+    if (colorMode) {
+      document.documentElement.setAttribute('color-mode', colorMode)
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://fonts.loli.net/css?family=Fira code&display=swap" rel="stylesheet"/>
+
+<meta name="generator" content="Hexo 4.1.0"></head>
+
+
+  <body>
+    <div id="app">
+      <div class="header">
+  <div class="avatar">
+    <a href="/">
+      <!-- 头像取消懒加载，添加no-lazy -->
+      
+        <img src="/images/avatar.png" alt="">
+      
+    </a>
+    <div class="nickname"><a href="/">Oranges</a></div>
+  </div>
+  <div class="navbar">
+    <ul>
+      
+        <li class="nav-item" data-path="/">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-item" data-path="/archives/">
+          <a href="/archives/">Archives</a>
+        </li>
+      
+        <li class="nav-item" data-path="/tags/">
+          <a href="/tags/">Tags</a>
+        </li>
+      
+        <li class="nav-item" data-path="/about/">
+          <a href="/about/">About</a>
+        </li>
+      
+    </ul>
+  </div>
+</div>
+
+
+<script src="/js/activeNav.js"></script>
+
+
+
+      <div class="flex-container">
+        <!-- 文章详情页，展示文章具体内容，url形式：https://yoursite/文章标题/ -->
+<!-- 同时为「标签tag」，「朋友friend」，「分类categories」，「关于about」页面的承载页面，具体展示取决于page.type -->
+
+<!-- LaTex Display -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']]
+  }
+};
+</script>
+
+
+
+  
+
+  
+
+  
+
+  
+  <!-- 文章内容页 url形式：https://yoursite/文章标题/ -->
+  <div class="container post-details" id="post-details">
+    <div class="post-content">
+      <div class="post-title">Go-m3u8下载器(一)</div>
+      <div class="post-attach">
+        <span class="post-pubtime">
+          <i class="iconfont icon-updatetime" title="更新时间"></i>
+          2021-05-01 08:44:43
+        </span>
+        
+              <span class="post-tags">
+                <i class="iconfont icon-tags" title="标签"></i>
+                
+                <span class="span--tag">
+                  <a href="/tags/Go/" title="Go">
+                    <b>#</b> Go
+                  </a>
+                </span>
+                
+                <span class="span--tag">
+                  <a href="/tags/m3u8/" title="m3u8">
+                    <b>#</b> m3u8
+                  </a>
+                </span>
+                
+              </span>
+          
+      </div>
+      <div class="markdown-body">
+        <h1 id="m3u8下载器"><a href="#m3u8下载器" class="headerlink" title="m3u8下载器"></a>m3u8下载器</h1><p>使用golang实现m3u8视频文件的下载</p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>什么是m3u8，接触过直播的人应该知道，HLS作为一种拉流的传输协议，我们时常也可以在浏览器上看到直播，这种使用了HLS，也就通过HTTP来传输HLS文件。</p>
+<p>在一些小电影，电视剧的网站上，我们也可以发现他的踪迹。浏览器F12打开开发者工具，网络面板中看到一直有连续的ts文件请求，就是它了</p>
+<a id="more"></a>
+<p>M3U8 —— Unicode 版本的 M3U（Moving Picture Experts Group Audio Layer 3 Uniform Resource Locator），<br>使用了 UTF-8 编码，是 HLS（HTTP Living Stream，苹果公司基于 HTTP 实现的媒体流传输协议）协议的一部分，作为媒体文件描述清单，另外一部分为 TS（Transport Stream，传输流） 媒体文件。</p>
+<p>M3U8 文件使用特定标签描述了媒体流的详细信息，包括时长、版本、编码、音频、字幕、播放列表、加密等。M3U8 媒体播放列表中保存了 TS 媒体文件的路径列表</p>
+<p>例如，一个m3u8文件：</p>
+<figure class="highlight vala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#EXTM3U</span></span><br><span class="line"><span class="meta">#EXT-X-VERSION:3</span></span><br><span class="line"><span class="meta">#EXT-X-TARGETDURATION:8</span></span><br><span class="line"><span class="meta">#EXT-X-MEDIA-SEQUENCE:0</span></span><br><span class="line"><span class="meta">#EXTINF:5.004,</span></span><br><span class="line">/<span class="number">20190319</span>/DnYZi3eA/<span class="number">800</span>kb/hls/imaOxa8299000.ts</span><br><span class="line"><span class="meta">#EXTINF:4.17,</span></span><br><span class="line">/<span class="number">20190319</span>/DnYZi3eA/<span class="number">800</span>kb/hls/imaOxa8299001.ts</span><br><span class="line"><span class="meta">#EXTINF:6.005,</span></span><br></pre></td></tr></table></figure>
+<h2 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h2><p>那么，在开始编码前，我们要知道一个m3u8文件的构成:</p>
+<h3 id="1-m3u8类型"><a href="#1-m3u8类型" class="headerlink" title="1. m3u8类型"></a>1. m3u8类型</h3><p>当 M3U8 文件作为媒体播放列表（Media Playlist）时，其内部信息记录的是一系列媒体片段资源，顺序播放该片段资源，即可完整展示多媒体资源。其格式如下所示</p>
+<figure class="highlight vala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#EXTM3U</span></span><br><span class="line"><span class="meta">#EXT-X-TARGETDURATION:10</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#EXTINF:9.009,</span></span><br><span class="line">http:<span class="comment">//media.example.com/first.ts</span></span><br><span class="line"><span class="meta">#EXTINF:9.009,</span></span><br><span class="line">http:<span class="comment">//media.example.com/second.ts</span></span><br><span class="line"><span class="meta">#EXTINF:3.003,</span></span><br><span class="line">http:<span class="comment">//media.example.com/third.ts</span></span><br><span class="line"><span class="meta">#EXT-X-ENDLIST</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>有些 TS 文件是经过加密处理的，下载下来无法直接播放，需要对 TS 数据进行解密，METHOD 为加密方式，一般为 AES-128 或者 NONE。如果为 AES-128 则有 URI 给定秘钥的存放位置，<br>部分加密还是用了 IV 偏移向量，因此在解密的时候需要格外注意，记得一起使用 IV 来进行解密。如果 METHOD 为 NONE 则表示没有加密，默认可以不声明 #EXT-X-KEY，NONE 的情况下不能出现 URI 和 IV</p>
+</blockquote>
+<p>当 M3U8 作为主播放列表（Master Playlist）时，其内部提供的是同一份媒体资源的多份流列表资源。其格式如下所示：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#EXTM3U</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=150000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/low/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=240000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/lo_mid/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=440000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/hi_mid/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=640000,RESOLUTION=640x360,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/high/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS=<span class="string">"mp4a.40.5"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/audio/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-ENDLIST</span></span><br></pre></td></tr></table></figure>
+<h3 id="2-m3u8的基本属性"><a href="#2-m3u8的基本属性" class="headerlink" title="2. m3u8的基本属性"></a>2. m3u8的基本属性</h3><ul>
+<li>#EXTM3U                    M3U8文件头，必须放在第一行;</li>
+<li>#EXT-X-MEDIA-SEQUENCE      第一个TS分片的序列号，一般情况下是0，但是在直播场景下，这个序列号标识直播段的起始位置; #EXT-X-MEDIA-SEQUENCE:0</li>
+<li>#EXT-X-TARGETDURATION      每个分片TS的最大的时长;   #EXT-X-TARGETDURATION:10     每个分片的最大时长是 10s</li>
+<li>#EXT-X-ALLOW-CACHE         是否允许cache;          #EXT-X-ALLOW-CACHE:YES      #EXT-X-ALLOW-CACHE:NO    默认情况下是YES</li>
+<li>#EXT-X-ENDLIST             M3U8文件结束符；</li>
+<li>#EXTINF                    extra info，分片TS的信息，如时长，带宽等；一般情况下是    #EXTINF:<code>&lt;duration&gt;</code>,[<code>&lt;title&gt;</code>] 后面可以跟着其他的信息，逗号之前是当前分片的ts时长，分片时长 移动要小于 #EXT-X-TARGETDURATION 定义的值；</li>
+<li>#EXT-X-VERSION             M3U8版本号</li>
+<li>#EXT-X-DISCONTINUITY       该标签表明其前一个切片与下一个切片之间存在中断。下面会详解</li>
+<li>#EXT-X-PLAYLIST-TYPE       表明流媒体类型；</li>
+<li>#EXT-X-KEY                 是否加密解析，    #EXT-X-KEY:METHOD=AES-128,URI=”<a href="https://priv.example.com/key.php?r=52" target="_blank" rel="noopener">https://priv.example.com/key.php?r=52</a>“    加密方式是AES-128,秘钥需要请求   <a href="https://priv.example.com/key.php?r=52" target="_blank" rel="noopener">https://priv.example.com/key.php?r=52</a>  ，请求回来存储在本地；</li>
+</ul>
+<h3 id="3-怎么判断是否是m3u8直播"><a href="#3-怎么判断是否是m3u8直播" class="headerlink" title="3. 怎么判断是否是m3u8直播"></a>3. 怎么判断是否是m3u8直播</h3><p>1.判断是否存在 #EXT-X-ENDLIST<br>对于一个M3U8文件，如果结尾不存在 #EXT-X-ENDLIST，那么一定是 直播，不是点播；</p>
+<p>2.判断 #EXT-X-PLAYLIST-TYPE 类型</p>
+<p>#EXT-X-PLAYLIST-TYPE 有两种类型：</p>
+<ul>
+<li>VOD 即 Video on Demand，表示该视频流为点播源，因此服务器不能更改该 M3U8 文件；</li>
+<li>EVENT 表示该视频流为直播源，因此服务器不能更改或删除该文件任意部分内容（但是可以在文件末尾添加新内容）<br>（注：VOD 文件通常带有 EXT-X-ENDLIST 标签，因为其为点播片源，不会改变；而 EVEVT 文件初始化时一般不会有 EXT-X-ENDLIST 标签，暗示有新的文件会添加到播放列表末尾，因此也需要客户端定时获取该 M3U8 文件，以获取新的媒体片段资源，直到访问到 EXT-X-ENDLIST 标签才停止）</li>
+</ul>
+<h3 id="4-多码率"><a href="#4-多码率" class="headerlink" title="4. 多码率"></a>4. 多码率</h3><p>例如一个master list中：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#EXTM3U</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=150000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/low/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=240000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/lo_mid/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=440000,RESOLUTION=416x234,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/hi_mid/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=640000,RESOLUTION=640x360,CODECS=<span class="string">"avc1.42e00a,mp4a.40.2"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/high/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS=<span class="string">"mp4a.40.5"</span></span></span><br><span class="line"><span class="symbol">http:</span><span class="comment">//example.com/audio/index.m3u8</span></span><br><span class="line"><span class="meta">#EXT-X-ENDLIST</span></span><br></pre></td></tr></table></figure>
+<p>通过不同码率选择上面不同的m3u8文件，然后在获取ts片段</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>根据上面的内容，我们在心里可以大概有一个m3u8文件的结构</p>
+<p><img src="https://cdn.jsdelivr.net/gh/watertreestar/CDN@master/picimage-20210529132616827.png" alt="image-20210529132616827"></p>
+<p>接下来的代码实现中也会创建对应的数据结构,我们需要从string或者io流中解析出上述的结构，以便进行后续的操作</p>
+
+      </div>
+      
+        <div class="prev-or-next">
+          <div class="post-foot-next">
+            
+              <a href="/2019/07/22/ckybpqxgv0018d2nhcuf1f93v/" target="_self">
+                <i class="iconfont icon-chevronleft"></i>
+                <span>上一页</span>
+              </a>
+            
+          </div>
+          <div class="post-attach">
+            <span class="post-pubtime">
+              <i class="iconfont icon-updatetime" title="更新时间"></i>
+              2021-05-01 08:44:43
+            </span>
+            
+                  <span class="post-tags">
+                    <i class="iconfont icon-tags" title="标签"></i>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/Go/" title="Go">
+                        <b>#</b> Go
+                      </a>
+                    </span>
+                    
+                    <span class="span--tag">
+                      <a href="/tags/m3u8/" title="m3u8">
+                        <b>#</b> m3u8
+                      </a>
+                    </span>
+                    
+                  </span>
+              
+          </div>
+          <div class="post-foot-prev">
+            
+              <a href="/2021/05/05/ckybpqxe90008d2nhhz1agusv/" target="_self">
+                <span>下一页</span>
+                <i class="iconfont icon-chevronright"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+    </div>
+    
+  <div id="btn-catalog" class="btn-catalog">
+    <i class="iconfont icon-catalog"></i>
+  </div>
+  <div class="post-catalog hidden" id="catalog">
+    <div class="title">目录</div>
+    <div class="catalog-content">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#m3u8下载器"><span class="toc-text">m3u8下载器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#前言"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#前置知识"><span class="toc-text">前置知识</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-m3u8类型"><span class="toc-text">1. m3u8类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-m3u8的基本属性"><span class="toc-text">2. m3u8的基本属性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-怎么判断是否是m3u8直播"><span class="toc-text">3. 怎么判断是否是m3u8直播</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-多码率"><span class="toc-text">4. 多码率</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现"><span class="toc-text">实现</span></a></li></ol></li></ol>
+    </div>
+  </div>
+
+  
+<script src="/js/catalog.js"></script>
+
+
+
+
+    
+      <div class="comments-container">
+        
+
+
+
+
+
+      </div>
+    
+  </div>
+
+
+        <div class="footer">
+  <div class="social">
+    <ul>
+      
+        <li>
+          <a title="github" href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">
+            <i class="iconfont icon-github"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="email" href="">
+            <i class="iconfont icon-envelope"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="facebook" href="">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="twitter" href="">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="wechat" href="">
+            <i class="iconfont icon-wechat"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="weibo" href="">
+            <i class="iconfont icon-weibo"></i>
+          </a>
+        </li>
+      
+        <li>
+          <a title="rss" href="/atom.xml">
+            <i class="iconfont icon-rss"></i>
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/watertreestar" target="_blank" rel="noopener">Copyright © watertreestar 2021</a>
+        
+    </div>
+  
+    <div class="footer-more">
+      
+        <a href="https://github.com/zchengsite/oranges" target="_blank" rel="noopener">Theme by Oranges | Powered by Hexo</a>
+        
+    </div>
+  
+</div>
+
+      </div>
+
+      <div class="tools-bar">
+        <div class="back-to-top tools-bar-item hidden">
+  <a href="javascript: void(0)">
+    <i class="iconfont icon-chevronup"></i>
+  </a>
+</div>
+
+
+<script src="/js/backtotop.js"></script>
+
+
+
+        
+  <div class="search-icon tools-bar-item" id="search-icon">
+    <a href="javascript: void(0)">
+      <i class="iconfont icon-search"></i>
+    </a>
+  </div>
+
+  <div class="search-overlay hidden">
+    <div class="search-content" tabindex="0">
+      <div class="search-title">
+        <span class="search-icon-input">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-search"></i>
+          </a>
+        </span>
+        
+          <input type="text" class="search-input" id="search-input" placeholder="搜索...">
+        
+        <span class="search-close-icon" id="search-close-icon">
+          <a href="javascript: void(0)">
+            <i class="iconfont icon-close"></i>
+          </a>
+        </span>
+      </div>
+      <div class="search-result" id="search-result"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    var inputArea = document.querySelector("#search-input")
+    var searchOverlayArea = document.querySelector(".search-overlay")
+
+    inputArea.onclick = function() {
+      getSearchFile()
+      this.onclick = null
+    }
+
+    inputArea.onkeydown = function() {
+      if(event.keyCode == 13)
+        return false
+    }
+
+    function openOrHideSearchContent() {
+      let isHidden = searchOverlayArea.classList.contains('hidden')
+      if (isHidden) {
+        searchOverlayArea.classList.remove('hidden')
+        document.body.classList.add('hidden')
+        // inputArea.focus()
+      } else {
+        searchOverlayArea.classList.add('hidden')
+        document.body.classList.remove('hidden')
+      }
+    }
+
+    function blurSearchContent(e) {
+      if (e.target === searchOverlayArea) {
+        openOrHideSearchContent()
+      }
+    }
+
+    document.querySelector("#search-icon").addEventListener("click", openOrHideSearchContent, false)
+    document.querySelector("#search-close-icon").addEventListener("click", openOrHideSearchContent, false)
+    searchOverlayArea.addEventListener("click", blurSearchContent, false)
+
+    var searchFunc = function (path, search_id, content_id) {
+      'use strict';
+      var $input = document.getElementById(search_id);
+      var $resultContent = document.getElementById(content_id);
+      $resultContent.innerHTML = "<ul><span class='local-search-empty'>首次搜索，正在载入索引文件，请稍后……<span></ul>";
+      $.ajax({
+        // 0x01. load xml file
+        url: path,
+        dataType: "xml",
+        success: function (xmlResponse) {
+          // 0x02. parse xml file
+          var datas = $("entry", xmlResponse).map(function () {
+            return {
+              title: $("title", this).text(),
+              content: $("content", this).text(),
+              url: $("url", this).text()
+            };
+          }).get();
+          $resultContent.innerHTML = "";
+
+          $input.addEventListener('input', function () {
+            // 0x03. parse query to keywords list
+            var str = '<ul class=\"search-result-list\">';
+            var keywords = this.value.trim().toLowerCase().split(/[\s\-]+/);
+            $resultContent.innerHTML = "";
+            if (this.value.trim().length <= 0) {
+              return;
+            }
+            // 0x04. perform local searching
+            datas.forEach(function (data) {
+              var isMatch = true;
+              var content_index = [];
+              if (!data.title || data.title.trim() === '') {
+                data.title = "Untitled";
+              }
+              var orig_data_title = data.title.trim();
+              var data_title = orig_data_title.toLowerCase();
+              var orig_data_content = data.content.trim().replace(/<[^>]+>/g, "");
+              var data_content = orig_data_content.toLowerCase();
+              var data_url = data.url;
+              var index_title = -1;
+              var index_content = -1;
+              var first_occur = -1;
+              // only match artiles with not empty contents
+              if (data_content !== '') {
+                keywords.forEach(function (keyword, i) {
+                  index_title = data_title.indexOf(keyword);
+                  index_content = data_content.indexOf(keyword);
+
+                  if (index_title < 0 && index_content < 0) {
+                    isMatch = false;
+                  } else {
+                    if (index_content < 0) {
+                      index_content = 0;
+                    }
+                    if (i == 0) {
+                      first_occur = index_content;
+                    }
+                    // content_index.push({index_content:index_content, keyword_len:keyword_len});
+                  }
+                });
+              } else {
+                isMatch = false;
+              }
+              // 0x05. show search results
+              if (isMatch) {
+                str += "<li><a href='" + data_url + "' class='search-result-title'>" + orig_data_title + "</a>";
+                var content = orig_data_content;
+                if (first_occur >= 0) {
+                  // cut out 100 characters
+                  var start = first_occur - 20;
+                  var end = first_occur + 80;
+
+                  if (start < 0) {
+                    start = 0;
+                  }
+
+                  if (start == 0) {
+                    end = 100;
+                  }
+
+                  if (end > content.length) {
+                    end = content.length;
+                  }
+
+                  var match_content = content.substr(start, end);
+
+                  // highlight all keywords
+                  keywords.forEach(function (keyword) {
+                    var regS = new RegExp(keyword, "gi");
+                    match_content = match_content.replace(regS, "<span class=\"search-keyword\">" + keyword + "</span>");
+                  });
+
+                  str += "<p class=\"search-result-abstract\">" + match_content + "...</p>"
+                }
+                str += "</li>";
+              }
+            });
+            str += "</ul>";
+            if (str.indexOf('<li>') === -1) {
+              return $resultContent.innerHTML = "<ul><span class='local-search-empty'>没有找到内容，请尝试更换检索词。<span></ul>";
+            }
+            $resultContent.innerHTML = str;
+          });
+        },
+        error: function(xhr, status, error) {
+          $resultContent.innerHTML = ""
+          if (xhr.status === 404) {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>未找到search.xml文件，具体请参考：<a href='https://github.com/zchengsite/hexo-theme-oranges#configuration' target='_black'>configuration</a><span></ul>";
+          } else {
+            $resultContent.innerHTML = "<ul><span class='local-search-empty'>请求失败，尝试重新刷新页面或稍后重试。<span></ul>";
+          }
+        }
+      });
+      $(document).on('click', '#search-close-icon', function() {
+        $('#search-input').val('');
+        $('#search-result').html('');
+      });
+    }
+
+    var getSearchFile = function() {
+        var path = "/search.xml";
+        searchFunc(path, 'search-input', 'search-result');
+    }
+  </script>
+
+
+
+
+        
+  <div class="tools-bar-item theme-icon" id="switch-color-scheme">
+    <a href="javascript: void(0)">
+      <i id="theme-icon" class="iconfont icon-moon"></i>
+    </a>
+  </div>
+
+  
+<script src="/js/colorscheme.js"></script>
+
+
+
+
+
+        
+  
+    <div class="share-icon tools-bar-item">
+      <a href="javascript: void(0)" id="share-icon">
+        <i class="iconfont iconshare"></i>
+      </a>
+      <div class="share-content hidden">
+        
+          <a class="share-item" href="https://twitter.com/intent/tweet?text=' + Go-m3u8%E4%B8%8B%E8%BD%BD%E5%99%A8(%E4%B8%80) + '&url=' + https%3A%2F%2Fwatertreestar.github.io%2F2021%2F05%2F01%2Fckybpqxe90007d2nh4stx15yl%2F + '" target="_blank" title="Twitter">
+            <i class="iconfont icon-twitter"></i>
+          </a>
+        
+        
+          <a class="share-item" href="https://www.facebook.com/sharer.php?u=https://watertreestar.github.io/2021/05/01/ckybpqxe90007d2nh4stx15yl/" target="_blank" title="Facebook">
+            <i class="iconfont icon-facebooksquare"></i>
+          </a>
+        
+      </div>
+    </div>
+    
+<script src="/js/shares.js"></script>
+
+  
+
+
+      </div>
+    </div>
+  </body>
+</html>
